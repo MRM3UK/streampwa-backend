@@ -2,6 +2,7 @@ const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
 module.exports = async (req, res) => {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,66 +18,45 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const result = await extractCyberfileVideo(url, getBaseUrl(req));
+    const result = await extractCyberfile(url, getBaseUrl(req));
     return res.status(200).json(result);
   } catch (error) {
     console.error('Cyberfile error:', error);
     return res.status(500).json({ 
       error: error.message,
-      iframeUrl: url 
+      iframeUrl: url,
+      iframeOnly: true
     });
   }
 };
 
-async function extractCyberfileVideo(url, baseUrl) {
+async function extractCyberfile(url, baseUrl) {
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1'
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5'
   };
 
-  // First request to get cookies and initial page
-  let response = await fetch(url, { 
-    headers,
-    redirect: 'follow'
-  });
-
-  let cookies = response.headers.get('set-cookie') || '';
+  let response = await fetch(url, { headers, redirect: 'follow' });
   let html = await response.text();
   let $ = cheerio.load(html);
 
-  // Check if there's a form to submit (countdown/captcha page)
-  const form = $('form#download-form, form[action*="download"], form[method="post"]').first();
-  
-  if (form.length > 0) {
-    // Extract form data
+  // Handle download form if present
+  const downloadForm = $('form[name="F1"], form#F1, form[method="post"]').first();
+  if (downloadForm.length && downloadForm.find('input[name="op"]').val() === 'download2') {
     const formData = new URLSearchParams();
-    form.find('input').each((i, el) => {
+    downloadForm.find('input').each((i, el) => {
       const name = $(el).attr('name');
       const value = $(el).attr('value') || '';
-      if (name) {
-        formData.append(name, value);
-      }
+      if (name) formData.append(name, value);
     });
 
-    const formAction = form.attr('action') || url;
-    const postUrl = formAction.startsWith('http') ? formAction : new URL(formAction, url).href;
+    await new Promise(r => setTimeout(r, 3000));
 
-    // Wait a bit (some sites require this)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Submit form
-    response = await fetch(postUrl, {
+    const postUrl = downloadForm.attr('action') || url;
+    response = await fetch(postUrl.startsWith('http') ? postUrl : new URL(postUrl, url).href, {
       method: 'POST',
-      headers: {
-        ...headers,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': cookies,
-        'Referer': url
-      },
+      headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': url },
       body: formData.toString(),
       redirect: 'follow'
     });
@@ -85,133 +65,108 @@ async function extractCyberfileVideo(url, baseUrl) {
     $ = cheerio.load(html);
   }
 
-  // Try multiple extraction methods
-  let directUrl = null;
-  let sources = [];
+  const sources = [];
+  const scripts = $('script').text() + ' ' + html;
 
-  // Method 1: Video tag sources
-  $('video source, video').each((i, el) => {
+  // Extract from video tags
+  $('video source[src], video[src]').each((i, el) => {
     const src = $(el).attr('src');
-    if (src && isVideoUrl(src)) {
-      sources.push({ src, quality: $(el).attr('label') || 'default' });
-    }
+    if (src && isVideo(src)) sources.push({ url: absolute(src, url), quality: 'video' });
   });
 
-  // Method 2: JWPlayer
-  const scriptContent = $('script').text();
-  
-  const jwSetup = scriptContent.match(/jwplayer\([^)]+\)\.setup\(([\s\S]*?)\);/);
-  if (jwSetup) {
-    const fileMatch = jwSetup[1].match(/["']?file["']?\s*:\s*["']([^"']+)["']/);
-    if (fileMatch) {
-      sources.push({ src: fileMatch[1], quality: 'jwplayer' });
-    }
-  }
-
-  // Method 3: Direct URL patterns in scripts
-  const urlPatterns = [
+  // Extract from scripts
+  const patterns = [
     /["']?(https?:\/\/[^"'\s]+\.mp4[^"'\s]*)["']?/gi,
     /["']?(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']?/gi,
     /file:\s*["']([^"']+)/gi,
-    /source:\s*["']([^"']+)/gi,
-    /src:\s*["']([^"']+\.(?:mp4|m3u8|webm)[^"']*)/gi,
-    /videoUrl\s*[=:]\s*["']([^"']+)/gi
+    /source:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/gi
   ];
 
-  for (const pattern of urlPatterns) {
+  for (const pattern of patterns) {
     let match;
-    while ((match = pattern.exec(scriptContent)) !== null) {
-      const src = match[1];
-      if (isVideoUrl(src) && !sources.find(s => s.src === src)) {
-        sources.push({ src, quality: 'script' });
+    while ((match = pattern.exec(scripts)) !== null) {
+      const videoUrl = match[1] || match[0];
+      if (isVideo(videoUrl) && videoUrl.startsWith('http')) {
+        sources.push({ url: videoUrl, quality: 'script' });
       }
     }
   }
 
-  // Method 4: Data attributes
-  $('[data-src], [data-video], [data-file]').each((i, el) => {
-    const src = $(el).attr('data-src') || $(el).attr('data-video') || $(el).attr('data-file');
-    if (src && isVideoUrl(src)) {
-      sources.push({ src, quality: 'data-attr' });
-    }
-  });
+  // Check for packed JS
+  const packedMatch = scripts.match(/eval\(function\(p,a,c,k,e,[dr]\)[\s\S]*?\)\)/);
+  if (packedMatch) {
+    try {
+      const unpacked = unpack(packedMatch[0]);
+      const videoUrls = unpacked.match(/https?:\/\/[^\s"']+\.(?:mp4|m3u8)[^\s"']*/g);
+      if (videoUrls) {
+        videoUrls.forEach(u => sources.push({ url: u, quality: 'packed' }));
+      }
+    } catch (e) {}
+  }
 
-  // Method 5: Download links
-  $('a[href*=".mp4"], a[href*="download"], a.download-btn, button[data-url]').each((i, el) => {
-    const href = $(el).attr('href') || $(el).attr('data-url');
-    if (href && isVideoUrl(href)) {
-      sources.push({ src: href, quality: 'download' });
+  // Deduplicate
+  const unique = [];
+  const seen = new Set();
+  for (const s of sources) {
+    if (!seen.has(s.url)) {
+      seen.add(s.url);
+      unique.push({
+        url: s.url,
+        proxyUrl: `${baseUrl}/api/proxy?url=${encodeURIComponent(s.url)}`,
+        quality: s.quality
+      });
     }
-  });
+  }
 
-  // Method 6: Look for iframe embeds
+  // Check for embed iframe
   let embedUrl = null;
-  $('iframe').each((i, el) => {
+  $('iframe[src]').each((i, el) => {
     const src = $(el).attr('src');
     if (src && (src.includes('player') || src.includes('embed') || src.includes('video'))) {
-      embedUrl = src.startsWith('//') ? 'https:' + src : 
-                 src.startsWith('/') ? new URL(src, url).href : src;
+      embedUrl = absolute(src, url);
     }
   });
 
-  // Clean and validate sources
-  sources = sources
-    .map(s => ({
-      ...s,
-      src: s.src.startsWith('//') ? 'https:' + s.src :
-           s.src.startsWith('/') ? new URL(s.src, url).href : s.src
-    }))
-    .filter(s => s.src.startsWith('http'));
-
-  // Remove duplicates
-  const uniqueSources = [];
-  const seen = new Set();
-  for (const source of sources) {
-    if (!seen.has(source.src)) {
-      seen.add(source.src);
-      uniqueSources.push(source);
-    }
+  if (unique.length > 0) {
+    return {
+      success: true,
+      type: 'cyberfile',
+      directUrl: unique[0].url,
+      proxyUrl: unique[0].proxyUrl,
+      sources: unique
+    };
   }
 
-  if (uniqueSources.length > 0) {
-    directUrl = uniqueSources[0].src;
-  }
-
-  // Build response
-  const result = {
-    success: !!directUrl,
-    originalUrl: url,
-    sources: uniqueSources.map(s => ({
-      url: s.src,
-      quality: s.quality,
-      proxyUrl: `${baseUrl}/api/proxy?url=${encodeURIComponent(s.src)}`
-    }))
+  return {
+    success: false,
+    type: 'cyberfile',
+    embedUrl: embedUrl || url,
+    iframeUrl: url,
+    iframeOnly: true
   };
-
-  if (directUrl) {
-    result.directUrl = directUrl;
-    result.proxyUrl = `${baseUrl}/api/proxy?url=${encodeURIComponent(directUrl)}`;
-  }
-
-  if (embedUrl) {
-    result.embedUrl = embedUrl;
-  }
-
-  if (!directUrl && !embedUrl) {
-    result.iframeUrl = url;
-    result.iframeOnly = true;
-  }
-
-  return result;
 }
 
-function isVideoUrl(url) {
+function isVideo(url) {
   if (!url) return false;
-  const videoExtensions = ['.mp4', '.m3u8', '.webm', '.mkv', '.avi', '.mov', '.mpd'];
-  const lower = url.toLowerCase();
-  return videoExtensions.some(ext => lower.includes(ext)) || 
-         lower.includes('/video') || 
-         lower.includes('stream');
+  return /\.(mp4|m3u8|webm|mkv|mpd)/i.test(url);
+}
+
+function absolute(url, base) {
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('//')) return 'https:' + url;
+  try { return new URL(url, base).href; } catch { return url; }
+}
+
+function unpack(p) {
+  try {
+    const match = p.match(/\('([^']+)',(\d+),(\d+),'([^']+)'\.split/);
+    if (!match) return '';
+    let [, code, a, c, k] = match;
+    a = parseInt(a); c = parseInt(c); k = k.split('|');
+    const e = (c) => (c < a ? '' : e(parseInt(c / a))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36));
+    while (c--) { if (k[c]) code = code.replace(new RegExp('\\b' + e(c) + '\\b', 'g'), k[c]); }
+    return code;
+  } catch { return ''; }
 }
 
 function getBaseUrl(req) {

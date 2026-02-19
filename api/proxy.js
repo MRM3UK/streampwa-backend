@@ -20,10 +20,17 @@ module.exports = async (req, res) => {
   try {
     const decodedUrl = decodeURIComponent(url);
     
-    // Determine referer based on URL
-    let referer = new URL(decodedUrl).origin;
+    // Determine referer
+    let referer;
+    try {
+      referer = new URL(decodedUrl).origin;
+    } catch {
+      referer = '';
+    }
+
     if (decodedUrl.includes('cyberfile')) {
-      referer = 'https://cyberfile.me/';
+      referer = decodedUrl.includes('cyberfile.me') ? 'https://cyberfile.me/' : 
+                decodedUrl.includes('cyberfile.su') ? 'https://cyberfile.su/' : referer;
     } else if (decodedUrl.includes('pixeldrain')) {
       referer = 'https://pixeldrain.com/';
     }
@@ -42,29 +49,39 @@ module.exports = async (req, res) => {
     }
 
     const response = await fetch(decodedUrl, {
-      method: req.method,
+      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
       headers,
       redirect: 'follow'
     });
 
-    // Forward response headers
-    const contentType = response.headers.get('content-type');
-    const contentLength = response.headers.get('content-length');
-    const contentRange = response.headers.get('content-range');
-    const acceptRanges = response.headers.get('accept-ranges');
+    // Forward important headers
+    const headersToForward = [
+      'content-type',
+      'content-length', 
+      'content-range',
+      'accept-ranges',
+      'content-disposition'
+    ];
 
-    if (contentType) res.setHeader('Content-Type', contentType);
-    if (contentLength) res.setHeader('Content-Length', contentLength);
-    if (contentRange) res.setHeader('Content-Range', contentRange);
-    if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
+    headersToForward.forEach(header => {
+      const value = response.headers.get(header);
+      if (value) {
+        res.setHeader(header, value);
+      }
+    });
 
-    // Set cache headers
+    // Cache for 1 hour
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
+    // Set status
     res.status(response.status);
 
-    // Stream the response
-    response.body.pipe(res);
+    // Stream response body
+    if (req.method !== 'HEAD' && response.body) {
+      response.body.pipe(res);
+    } else {
+      res.end();
+    }
 
   } catch (error) {
     console.error('Proxy error:', error);
@@ -72,7 +89,7 @@ module.exports = async (req, res) => {
   }
 };
 
-// Vercel config for streaming
+// Config for Vercel - allow large responses and streaming
 module.exports.config = {
   api: {
     responseLimit: false,

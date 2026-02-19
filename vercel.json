@@ -10,14 +10,14 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -26,7 +26,8 @@
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Range" }
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Range" },
+        { "key": "Access-Control-Expose-Headers", "value": "Content-Length, Content-Range, Accept-Ranges" }
       ]
     }
   ]

@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a1a">
+<meta name="description" content="Advanced PWA Streaming Player">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>StreamPWA</title>
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlN0cmVhbVBXQSBQbGF5ZXIiLAogICJzaG9ydF9uYW1lIjogIlN0cmVhbVBXQSIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMGEwYTFhIiwKICAidGhlbWVfY29sb3IiOiAiIzBhMGExYSIsCiAgImljb25zIjogW3sKICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJyUzRSUzQ3JlY3Qgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIHJ4PSc2NCcgZmlsbD0nJTIzNjMzM2ZmJy8lM0UlM0Nwb2x5Z29uIHBvaW50cz0nMTkwLDEyOCAzNzAsMjU2IDE5MCwzODQnIGZpbGw9J3doaXRlJy8lM0UlM0Mvc3ZnJTNFIiwKICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiLAogICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogIH1dCn0=">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+<script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #12122a;
+  --bg-card: rgba(255,255,255,0.05);
+  --bg-glass: rgba(255,255,255,0.08);
+  --text-primary: #e8e8f0;
+  --text-secondary: #8888aa;
+  --accent: #6333ff;
+  --accent-glow: rgba(99,51,255,0.3);
+  --success: #33cc77;
+  --danger: #ff4466;
+  --warning: #ffaa33;
+  --border: rgba(255,255,255,0.1);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f0f0f8;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(0,0,0,0.04);
+  --bg-glass: rgba(255,255,255,0.7);
+  --text-primary: #1a1a2e;
+  --text-secondary: #666688;
+  --border: rgba(0,0,0,0.1);
+  --shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+/* Icons */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.icon-play::before { content: ''; border-left: 10px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.icon-pause::before { content: ''; width: 4px; height: 12px; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+.icon-home::before { content: ''; width: 14px; height: 10px; border: 2px solid currentColor; border-top: none; position: relative; top: 3px; }
+.icon-home::after { content: ''; position: absolute; top: 2px; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 10px solid currentColor; }
+.icon-list::before { content: ''; width: 16px; height: 2px; background: currentColor; box-shadow: 0 5px 0 currentColor, 0 10px 0 currentColor; }
+.icon-settings::before { content: ''; width: 14px; height: 14px; border: 2px solid currentColor; border-radius: 50%; }
+.icon-settings::after { content: ''; position: absolute; width: 4px; height: 4px; background: currentColor; border-radius: 50%; }
+.icon-search::before { content: ''; width: 10px; height: 10px; border: 2px solid currentColor; border-radius: 50%; }
+.icon-search::after { content: ''; position: absolute; width: 6px; height: 2px; background: currentColor; transform: rotate(45deg); bottom: 3px; right: 2px; }
+.icon-add::before { content: ''; width: 14px; height: 2px; background: currentColor; }
+.icon-add::after { content: ''; position: absolute; width: 2px; height: 14px; background: currentColor; }
+.icon-close::before, .icon-close::after { content: ''; position: absolute; width: 16px; height: 2px; background: currentColor; }
+.icon-close::before { transform: rotate(45deg); }
+.icon-close::after { transform: rotate(-45deg); }
+.icon-grid::before { content: ''; width: 14px; height: 14px; background: currentColor; -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px) repeat, repeating-linear-gradient(0deg, #000 0 5px, transparent 5px 7px) repeat; mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px) repeat, repeating-linear-gradient(0deg, #000 0 5px, transparent 5px 7px) repeat; }
+.icon-download::before { content: ''; width: 2px; height: 10px; background: currentColor; }
+.icon-download::after { content: ''; position: absolute; bottom: 2px; width: 8px; height: 2px; background: currentColor; box-shadow: -3px -4px 0 0 currentColor, 3px -4px 0 0 currentColor; }
+.icon-upload::before { content: ''; width: 2px; height: 10px; background: currentColor; }
+.icon-upload::after { content: ''; position: absolute; top: 2px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 5px solid currentColor; }
+.icon-copy::before { content: ''; width: 10px; height: 12px; border: 2px solid currentColor; border-radius: 2px; position: relative; top: -1px; left: -1px; }
+.icon-copy::after { content: ''; position: absolute; width: 10px; height: 12px; border: 2px solid currentColor; border-radius: 2px; top: 4px; left: 4px; background: var(--bg-secondary); }
+.icon-external::before { content: ''; width: 10px; height: 10px; border: 2px solid currentColor; border-radius: 2px; position: relative; top: 2px; left: -2px; }
+.icon-external::after { content: ''; position: absolute; width: 8px; height: 2px; background: currentColor; transform: rotate(-45deg); top: 5px; right: 3px; }
+.icon-delete::before { content: ''; width: 12px; height: 14px; border: 2px solid currentColor; border-top: none; border-radius: 0 0 3px 3px; position: relative; top: 2px; }
+.icon-delete::after { content: ''; position: absolute; top: 2px; width: 16px; height: 2px; background: currentColor; }
+.icon-back::before { content: ''; width: 10px; height: 10px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-left: 4px; }
+.icon-sort::before { content: ''; width: 14px; height: 2px; background: currentColor; }
+.icon-sort::after { content: ''; position: absolute; bottom: 3px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid currentColor; }
+.icon-moon::before { content: ''; width: 14px; height: 14px; border-radius: 50%; box-shadow: 4px -2px 0 0 currentColor; }
+.icon-sun::before { content: ''; width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
+.icon-sun::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px dashed currentColor; border-radius: 50%; }
+.icon-video::before { content: ''; width: 14px; height: 10px; border: 2px solid currentColor; border-radius: 2px; }
+.icon-video::after { content: ''; position: absolute; right: 0; width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid currentColor; }
+.icon-link::before { content: ''; width: 8px; height: 6px; border: 2px solid currentColor; border-radius: 4px; transform: rotate(-45deg); }
+.icon-link::after { content: ''; position: absolute; width: 8px; height: 6px; border: 2px solid currentColor; border-radius: 4px; transform: rotate(-45deg); top: 6px; left: 6px; }
+.icon-refresh::before { content: ''; width: 12px; height: 12px; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; }
+.icon-refresh::after { content: ''; position: absolute; top: 3px; right: 3px; width: 0; height: 0; border-left: 4px solid transparent; border-bottom: 4px solid currentColor; }
+.icon-check::before { content: ''; width: 6px; height: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-bottom: 2px; }
+.icon-info::before { content: ''; width: 14px; height: 14px; border: 2px solid currentColor; border-radius: 50%; }
+.icon-info::after { content: ''; position: absolute; width: 2px; height: 6px; background: currentColor; top: 8px; }
+
+/* Loading */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  transition: opacity 0.5s;
+  gap: 16px;
+}
+#loading-overlay.hidden { opacity: 0; pointer-events: none; }
+#loading-overlay .spinner { width: 48px; height: 48px; }
+
+/* Toast */
+#toast-container {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  width: 90%;
+  max-width: 400px;
+}
+
+.toast {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 14px;
+  animation: toast-in 0.3s ease;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.error { border-color: var(--danger); }
+.toast.success { border-color: var(--success); }
+.toast.warning { border-color: var(--warning); }
+@keyframes toast-in {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: var(--transition);
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #aa66ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex: 1;
+}
+
+.header-actions { display: flex; gap: 8px; }
+
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.nav-item.active { color: var(--accent); }
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 24px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 0 0 3px 3px;
+}
+
+/* Main */
+.main-content {
+  padding-top: 64px;
+  padding-bottom: 80px;
+  min-height: 100vh;
+}
+
+.page {
+  display: none;
+  padding: 16px;
+  animation: page-in 0.3s ease;
+}
+.page.active { display: block; }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:active { background: #5522dd; }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: white; }
+.btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 8px; }
+.btn-icon { padding: 10px; width: 40px; height: 40px; border-radius: 10px; }
+.btn-block { width: 100%; }
+
+/* Inputs */
+.input-group { margin-bottom: 16px; }
+.input-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+
+.input, textarea, select {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition);
+  font-family: inherit;
+}
+.input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+textarea { resize: vertical; min-height: 100px; }
+select { appearance: none; cursor: pointer; }
+
+/* Cards */
+.card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+/* Search */
+.search-bar {
+  position: relative;
+  margin-bottom: 16px;
+}
+.search-bar .icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+}
+.search-bar .input { padding-left: 44px; }
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* View Controls */
+.view-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.view-controls .count { flex: 1; font-size: 13px; color: var(--text-secondary); }
+
+/* List Item */
+.playlist-item-list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  overflow: hidden;
+}
+.playlist-item-list:active { background: var(--accent-glow); }
+.playlist-item-list .item-thumb {
+  width: 48px;
+  height: 36px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+.playlist-item-list .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.playlist-item-list .item-thumb .icon { color: var(--accent); width: 16px; height: 16px; }
+.playlist-item-list .item-info { flex: 1; min-width: 0; }
+.playlist-item-list .item-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.playlist-item-list .item-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.playlist-item-list .item-actions { display: flex; gap: 4px; }
+
+/* Grid View */
+.grid-view {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.playlist-item-grid {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.playlist-item-grid:active { transform: scale(0.97); }
+.playlist-item-grid .item-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.playlist-item-grid .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.playlist-item-grid .item-info { padding: 10px; }
+.playlist-item-grid .item-title { font-size: 13px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+.playlist-item-grid .item-meta { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Compact Grid */
+.compact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.playlist-item-compact {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.playlist-item-compact:active { transform: scale(0.95); }
+.playlist-item-compact .item-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.playlist-item-compact .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.playlist-item-compact .item-title {
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+/* Card View */
+.playlist-item-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.playlist-item-card:active { transform: scale(0.98); }
+.playlist-item-card .item-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.playlist-item-card .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.playlist-item-card .item-info { padding: 14px; }
+.playlist-item-card .item-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.playlist-item-card .item-meta { font-size: 12px; color: var(--text-secondary); }
+.playlist-item-card .item-actions { display: flex; gap: 8px; padding: 0 14px 14px; }
+
+/* Type Badge */
+.type-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Player */
+.player-container {
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+  min-height: 200px;
+}
+.player-container video {
+  width: 100%;
+  display: block;
+  max-height: 60vh;
+}
+.player-container iframe {
+  width: 100%;
+  height: 56.25vw;
+  max-height: 60vh;
+  border: none;
+  display: block;
+}
+.player-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.8);
+}
+
+.player-info { margin-bottom: 16px; }
+.player-info .now-playing { font-size: 12px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.player-info .player-title { font-size: 18px; font-weight: 700; }
+.player-info .player-url { font-size: 12px; color: var(--text-secondary); word-break: break-all; margin-top: 4px; }
+
+.player-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fade-in 0.2s;
+}
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--bg-secondary);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  animation: slide-up 0.3s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.modal-header h3 { font-size: 18px; font-weight: 700; }
+
+/* Settings */
+.settings-section { margin-bottom: 24px; }
+.settings-section h4 {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.setting-item .setting-label { font-size: 14px; }
+.setting-item .setting-desc { font-size: 11px; color: var(--text-secondary); }
+
+/* Toggle */
+.toggle {
+  width: 48px;
+  height: 28px;
+  background: var(--border);
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.toggle.active { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: var(--transition);
+}
+.toggle.active::after { left: 23px; }
+
+/* Pull Refresh */
+.pull-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50px);
+  z-index: 99;
+  transition: transform 0.3s;
+}
+.pull-indicator.visible { transform: translateX(-50%) translateY(16px); }
+
+/* Install Banner */
+.install-banner {
+  background: linear-gradient(135deg, var(--accent), #8855ff);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  display: none;
+  color: white;
+}
+.install-banner.show { display: block; animation: page-in 0.3s ease; }
+.install-banner h3 { font-size: 16px; margin-bottom: 4px; }
+.install-banner p { font-size: 13px; opacity: 0.9; margin-bottom: 12px; }
+.install-banner .btn { background: white; color: var(--accent); border: none; }
+
+/* Quick Actions */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.quick-action {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.quick-action:active { transform: scale(0.97); background: var(--accent-glow); }
+.quick-action .icon { width: 36px; height: 36px; color: var(--accent); }
+.quick-action span { font-size: 13px; font-weight: 500; }
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+}
+.stat-card .stat-num { font-size: 24px; font-weight: 700; color: var(--accent); }
+.stat-card .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Section Header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-header h3 { font-size: 16px; font-weight: 700; }
+.section-header a { font-size: 13px; color: var(--accent); text-decoration: none; cursor: pointer; }
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+.empty-state .icon { width: 64px; height: 64px; margin: 0 auto 16px; opacity: 0.5; }
+.empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text-primary); }
+.empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+input[type="file"] { display: none; }
+
+/* Mode Badge */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.mode-badge.hls { background: rgba(255,165,0,0.2); color: #ffaa33; }
+.mode-badge.dash { background: rgba(0,150,255,0.2); color: #0096ff; }
+.mode-badge.mp4 { background: rgba(51,204,119,0.2); color: #33cc77; }
+.mode-badge.iframe { background: rgba(255,68,102,0.2); color: #ff4466; }
+.mode-badge.pixeldrain { background: rgba(99,51,255,0.2); color: #6333ff; }
+.mode-badge.cyberfile { background: rgba(255,136,0,0.2); color: #ff8800; }
+.mode-badge.unknown { background: rgba(136,136,170,0.2); color: #8888aa; }
+.mode-badge.proxy { background: rgba(0,200,150,0.2); color: #00c896; }
+
+/* Sort Menu */
+.sort-dropdown { position: relative; }
+.sort-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  min-width: 160px;
+  z-index: 50;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.sort-menu.show { display: block; }
+.sort-option {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+.sort-option:hover, .sort-option.active { background: var(--accent-glow); color: var(--accent); }
+
+/* API Status */
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.api-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.api-status .dot.connected { background: var(--success); }
+
+/* Source Selector */
+.source-selector {
+  margin-top: 16px;
+}
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.source-item:hover { border-color: var(--accent); }
+.source-item.active { border-color: var(--accent); background: var(--accent-glow); }
+.source-item .quality { font-weight: 600; min-width: 60px; }
+.source-item .url { flex: 1; font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 480px) {
+  .grid-view { grid-template-columns: repeat(3, 1fr); }
+  .compact-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 768px) {
+  .grid-view { grid-template-columns: repeat(4, 1fr); }
+  .compact-grid { grid-template-columns: repeat(6, 1fr); }
+  .quick-actions { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <span style="font-size:14px;color:var(--text-secondary)">Loading StreamPWA...</span>
+</div>
+
+<div id="toast-container"></div>
+
+<div class="pull-indicator" id="pull-indicator">
+  <div class="spinner" style="width:28px;height:28px;"></div>
+</div>
+
+<header class="header" id="header">
+  <span class="header-title">StreamPWA</span>
+  <div class="header-actions">
+    <button class="btn-icon btn" id="theme-toggle" aria-label="Toggle theme">
+      <span class="icon icon-moon"></span>
+    </button>
+    <button class="btn-icon btn" id="install-btn" style="display:none" aria-label="Install App">
+      <span class="icon icon-download"></span>
+    </button>
+  </div>
+</header>
+
+<main class="main-content" id="main-content">
+  <!-- HOME -->
+  <section class="page active" id="page-home">
+    <div class="install-banner" id="install-banner">
+      <h3>Install StreamPWA</h3>
+      <p>Add to home screen for the best experience with offline support.</p>
+      <button class="btn" onclick="App.installPWA()">Install Now</button>
+    </div>
+
+    <!-- API Status -->
+    <div class="api-status" id="api-status">
+      <span class="dot" id="api-dot"></span>
+      <span id="api-text">Checking API...</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Channels</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-groups">0</div>
+        <div class="stat-label">Groups</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-saved">0</div>
+        <div class="stat-label">Saved</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h3>Quick Actions</h3>
+    </div>
+    <div class="quick-actions">
+      <div class="quick-action" onclick="App.showModal('modal-paste')">
+        <span class="icon icon-link"></span>
+        <span>Paste Links</span>
+      </div>
+      <div class="quick-action" onclick="App.triggerFileInput('file-m3u')">
+        <span class="icon icon-upload"></span>
+        <span>Upload M3U</span>
+      </div>
+      <div class="quick-action" onclick="App.triggerFileInput('file-txt')">
+        <span class="icon icon-list"></span>
+        <span>Upload TXT</span>
+      </div>
+      <div class="quick-action" onclick="App.showModal('modal-url')">
+        <span class="icon icon-download"></span>
+        <span>Fetch URL</span>
+      </div>
+    </div>
+
+    <div class="section-header" id="recent-header" style="display:none">
+      <h3>Recently Played</h3>
+      <a onclick="App.clearRecent()">Clear</a>
+    </div>
+    <div id="recent-list"></div>
+  </section>
+
+  <!-- PLAYLIST -->
+  <section class="page" id="page-playlist">
+    <div class="search-bar">
+      <span class="icon icon-search"></span>
+      <input type="text" class="input" placeholder="Search channels..." id="search-input" oninput="App.filterPlaylist()">
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-chip active" data-group="all" onclick="App.filterByGroup('all', this)">All</button>
+    </div>
+
+    <div class="view-controls">
+      <span class="count" id="playlist-count">0 items</span>
+      <div class="sort-dropdown">
+        <button class="btn btn-sm btn-icon" onclick="App.toggleSortMenu()" aria-label="Sort">
+          <span class="icon icon-sort"></span>
+        </button>
+        <div class="sort-menu" id="sort-menu">
+          <button class="sort-option active" onclick="App.sortPlaylist('default')">Default</button>
+          <button class="sort-option" onclick="App.sortPlaylist('name-asc')">Name A-Z</button>
+          <button class="sort-option" onclick="App.sortPlaylist('name-desc')">Name Z-A</button>
+          <button class="sort-option" onclick="App.sortPlaylist('type')">By Type</button>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-icon" onclick="App.cycleView()" aria-label="Change view" id="view-toggle-btn">
+        <span class="icon icon-grid"></span>
+      </button>
+    </div>
+
+    <div id="playlist-container" class="playlist-container"></div>
+
+    <div class="empty-state" id="empty-playlist">
+      <div class="icon icon-video" style="width:64px;height:64px;"></div>
+      <h3>No Channels Yet</h3>
+      <p>Upload a playlist or paste links to get started</p>
+      <button class="btn btn-primary" onclick="App.navigate('home')">Add Content</button>
+    </div>
+  </section>
+
+  <!-- PLAYER -->
+  <section class="page" id="page-player">
+    <button class="btn btn-sm" onclick="App.navigate('playlist')" style="margin-bottom:12px">
+      <span class="icon icon-back"></span> Back
+    </button>
+
+    <div class="player-container" id="player-container">
+      <div class="player-loading" id="player-loading">
+        <div class="spinner"></div>
+      </div>
+      <video id="video-player" controls playsinline style="display:none;"></video>
+    </div>
+
+    <div class="player-info">
+      <div class="now-playing">Now Playing</div>
+      <div class="player-title" id="player-title">Select a channel</div>
+      <div class="player-url" id="player-url"></div>
+      <div style="margin-top:8px">
+        <span class="mode-badge unknown" id="player-mode-badge">AUTO</span>
+      </div>
+    </div>
+
+    <div class="player-actions">
+      <button class="btn" onclick="App.copyStreamLink()">
+        <span class="icon icon-copy"></span> Copy
+      </button>
+      <button class="btn" onclick="App.openExternal()">
+        <span class="icon icon-external"></span> External
+      </button>
+      <button class="btn" onclick="App.openInLeone()">
+        <span class="icon icon-play"></span> Leone
+      </button>
+      <button class="btn" onclick="App.openChooser()">
+        <span class="icon icon-video"></span> Chooser
+      </button>
+    </div>
+
+    <!-- Source Selector -->
+    <div class="source-selector" id="source-selector" style="display:none;">
+      <div class="section-header">
+        <h3>Available Sources</h3>
+      </div>
+      <div id="source-list"></div>
+    </div>
+
+    <div class="section-header">
+      <h3>Up Next</h3>
+    </div>
+    <div id="mini-playlist"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="page" id="page-settings">
+    <div class="settings-section">
+      <h4>API Configuration</h4>
+      <div class="input-group">
+        <label>Backend API URL</label>
+        <input type="text" class="input" id="setting-api-url" placeholder="https://your-vercel-app.vercel.app" onchange="App.saveSetting('apiUrl', this.value); App.checkApiStatus();">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Player</h4>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Player Mode</div>
+          <div class="setting-desc">Choose default player engine</div>
+        </div>
+        <select id="setting-player-mode" onchange="App.saveSetting('playerMode', this.value)" style="width:auto;min-width:100px;">
+          <option value="auto">Auto</option>
+          <option value="hls">HLS.js</option>
+          <option value="dash">DASH.js</option>
+          <option value="native">Native HTML5</option>
+          <option value="iframe">Iframe</option>
+          <option value="intent">Android Intent</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Use Proxy</div>
+          <div class="setting-desc">Route videos through backend proxy</div>
+        </div>
+        <div class="toggle" id="setting-use-proxy" onclick="App.toggleProxy()"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Appearance</h4>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Dark Theme</div>
+          <div class="setting-desc">Toggle dark/light mode</div>
+        </div>
+        <div class="toggle" id="setting-dark-theme" onclick="App.toggleTheme()"></div>
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">Default View</div>
+          <div class="setting-desc">Choose playlist display style</div>
+        </div>
+        <select id="setting-view" onchange="App.saveSetting('viewMode', this.value); App.renderPlaylist();" style="width:auto;min-width:100px;">
+          <option value="list">List</option>
+          <option value="grid">Grid</option>
+          <option value="compact">Compact</option>
+          <option value="card">Card</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Data</h4>
+      <div class="quick-actions" style="margin-bottom:0">
+        <div class="quick-action" onclick="App.exportPlaylist()">
+          <span class="icon icon-download"></span>
+          <span>Export</span>
+        </div>
+        <div class="quick-action" onclick="App.triggerFileInput('file-import')">
+          <span class="icon icon-upload"></span>
+          <span>Import</span>
+        </div>
+        <div class="quick-action" onclick="App.clearAllData()">
+          <span class="icon icon-delete"></span>
+          <span>Clear All</span>
+        </div>
+        <div class="quick-action" onclick="App.clearCache()">
+          <span class="icon icon-refresh"></span>
+          <span>Clear Cache</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="App.navigate('home')" data-page="home">
+    <span class="icon icon-home"></span>
+    <span>Home</span>
+  </button>
+  <button class="nav-item" onclick="App.navigate('playlist')" data-page="playlist">
+    <span class="icon icon-list"></span>
+    <span>Playlist</span>
+  </button>
+  <button class="nav-item" onclick="App.showModal('modal-paste')" data-page="add">
+    <span class="icon icon-add" style="width:32px;height:32px;background:var(--accent);border-radius:50%;color:white;"></span>
+    <span>Add</span>
+  </button>
+  <button class="nav-item" onclick="App.navigate('player')" data-page="player">
+    <span class="icon icon-play"></span>
+    <span>Player</span>
+  </button>
+  <button class="nav-item" onclick="App.navigate('settings')" data-page="settings">
+    <span class="icon icon-settings"></span>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-paste" onclick="App.closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Paste Links</h3>
+      <button class="btn btn-icon btn-sm" onclick="App.closeModal('modal-paste')">
+        <span class="icon icon-close"></span>
+      </button>
+    </div>
+    <div class="input-group">
+      <label>Enter URLs (one per line)</label>
+      <textarea id="paste-input" placeholder="https://example.com/video.mp4&#10;https://pixeldrain.com/u/abc123&#10;https://cyberfile.me/xyz"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="App.addPastedLinks()">
+      <span class="icon icon-add"></span> Add Links
+    </button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-url" onclick="App.closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Fetch Playlist from URL</h3>
+      <button class="btn btn-icon btn-sm" onclick="App.closeModal('modal-url')">
+        <span class="icon icon-close"></span>
+      </button>
+    </div>
+    <div class="input-group">
+      <label>Playlist URL (.m3u, .m3u8, .txt)</label>
+      <input type="text" class="input" id="fetch-url-input" placeholder="https://example.com/playlist.m3u">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="App.fetchPlaylistFromURL()">
+      <span class="icon icon-download"></span> Fetch Playlist
+    </button>
+  </div>
+</div>
+
+<input type="file" id="file-m3u" accept=".m3u,.m3u8" onchange="App.handleFileUpload(event, 'm3u')">
+<input type="file" id="file-txt" accept=".txt" onchange="App.handleFileUpload(event, 'txt')">
+<input type="file" id="file-import" accept=".json" onchange="App.handleImport(event)">
+
+<script>
+/**
+ * StreamPWA - Advanced PWA Streaming Player
+ * With Pixeldrain & Cyberfile Backend Support
+ */
+
+const App = {
+  playlist: [],
+  filteredPlaylist: [],
+  currentIndex: -1,
+  currentSources: [],
+  settings: {
+    playerMode: 'auto',
+    theme: 'dark',
+    viewMode: 'list',
+    sortMode: 'default',
+    apiUrl: '',
+    useProxy: false
+  },
+  recentlyPlayed: [],
+  hlsInstance: null,
+  dashInstance: null,
+  deferredPrompt: null,
+  currentGroup: 'all',
+  apiConnected: false,
+
+  /**
+   * Initialize app
+   */
+  init() {
+    this.loadSettings();
+    this.loadPlaylist();
+    this.loadRecent();
+    this.applyTheme();
+    this.setupPWA();
+    this.setupPullToRefresh();
+    this.registerSW();
+    this.checkApiStatus();
+
+    // Apply settings to UI
+    document.getElementById('setting-player-mode').value = this.settings.playerMode;
+    document.getElementById('setting-view').value = this.settings.viewMode;
+    document.getElementById('setting-api-url').value = this.settings.apiUrl || '';
+
+    const darkToggle = document.getElementById('setting-dark-theme');
+    if (this.settings.theme === 'dark') darkToggle.classList.add('active');
+
+    const proxyToggle = document.getElementById('setting-use-proxy');
+    if (this.settings.useProxy) proxyToggle.classList.add('active');
+
+    this.updateStats();
+    this.renderPlaylist();
+    this.renderRecent();
+
+    setTimeout(() => {
+      document.getElementById('loading-overlay').classList.add('hidden');
+    }, 500);
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.sort-dropdown')) {
+        document.getElementById('sort-menu').classList.remove('show');
+      }
+    });
+  },
+
+  // ========== API ==========
+  
+  /**
+   * Get API base URL
+   */
+  getApiUrl() {
+    return this.settings.apiUrl || window.location.origin;
+  },
+
+  /**
+   * Check API connectivity
+   */
+  async checkApiStatus() {
+    const dot = document.getElementById('api-dot');
+    const text = document.getElementById('api-text');
+
+    try {
+      const res = await fetch(`${this.getApiUrl()}/api/resolve?url=test`, { method: 'GET' });
+      if (res.ok || res.status === 400) {
+        this.apiConnected = true;
+        dot.classList.add('connected');
+        text.textContent = 'API Connected';
+      } else {
+        throw new Error('API error');
+      }
+    } catch (e) {
+      this.apiConnected = false;
+      dot.classList.remove('connected');
+      text.textContent = 'API Offline - Configure in Settings';
+    }
+  },
+
+  /**
+   * Resolve a link using backend API
+   */
+  async resolveLink(url, type) {
+    if (!this.apiConnected) {
+      return { success: false, directUrl: url, iframeUrl: url };
+    }
+
+    try {
+      const apiUrl = `${this.getApiUrl()}/api/resolve?url=${encodeURIComponent(url)}&type=${type || ''}`;
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error('Resolve error:', e);
+      return { success: false, directUrl: url, iframeUrl: url, error: e.message };
+    }
+  },
+
+  /**
+   * Get proxied URL
+   */
+  getProxyUrl(url) {
+    return `${this.getApiUrl()}/api/proxy?url=${encodeURIComponent(url)}`;
+  },
+
+  // ========== NAVIGATION ==========
+  
+  navigate(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('page-' + page);
+    if (target) target.classList.add('active');
+
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navItem) navItem.classList.add('active');
+
+    const titles = { home: 'StreamPWA', playlist: 'Playlist', player: 'Player', settings: 'Settings' };
+    document.querySelector('.header-title').textContent = titles[page] || 'StreamPWA';
+
+    window.scrollTo(0, 0);
+  },
+
+  // ========== TOAST ==========
+  
+  toast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = this.sanitize(message);
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
+      toast.style.transition = '0.3s';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  },
+
+  // ========== SECURITY ==========
+  
+  sanitize(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  isValidURL(url) {
+    try {
+      const u = new URL(url.trim());
+      return ['http:', 'https:'].includes(u.protocol);
+    } catch {
+      return false;
+    }
+  },
+
+  // ========== LINK DETECTION ==========
+  
+  detectLinkType(url) {
+    if (!url) return 'unknown';
+    const lower = url.toLowerCase().trim();
+
+    if (lower.includes('pixeldrain.com')) return 'pixeldrain';
+    if (lower.includes('cyberfile.me') || lower.includes('cyberfile.su') || lower.includes('cyberfile.cc')) return 'cyberfile';
+    if (lower.match(/\.m3u8(\?|$)/)) return 'hls';
+    if (lower.match(/\.mpd(\?|$)/)) return 'dash';
+    if (lower.match(/\.(mp4|mkv|webm|avi|mov|wmv|flv)(\?|$)/)) return 'mp4';
+    if (lower.match(/\.m3u(\?|$)/)) return 'hls';
+    return 'unknown';
+  },
+
+  getTypeBadgeClass(type) {
+    const map = { mp4: 'mp4', hls: 'hls', dash: 'dash', pixeldrain: 'pixeldrain', cyberfile: 'cyberfile', iframe: 'iframe', proxy: 'proxy', unknown: 'unknown' };
+    return map[type] || 'unknown';
+  },
+
+  // ========== M3U PARSER ==========
+  
+  parseM3U(content) {
+    const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+    const channels = [];
+    let currentInfo = {};
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (line.startsWith('#EXTM3U')) continue;
+
+      if (line.startsWith('#EXTINF:')) {
+        currentInfo = {};
+        const nameMatch = line.match(/tvg-name="([^"]*)"/);
+        if (nameMatch) currentInfo.tvgName = nameMatch[1];
+        const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+        if (logoMatch) currentInfo.logo = logoMatch[1];
+        const groupMatch = line.match(/group-title="([^"]*)"/);
+        if (groupMatch) currentInfo.group = groupMatch[1];
+        const commaIdx = line.lastIndexOf(',');
+        if (commaIdx > -1) currentInfo.name = line.substring(commaIdx + 1).trim();
+      } else if (!line.startsWith('#') && line.length > 5) {
+        const url = line.trim();
+        if (url) {
+          channels.push({
+            id: this.generateId(),
+            name: currentInfo.name || currentInfo.tvgName || this.extractNameFromURL(url),
+            url: url,
+            type: this.detectLinkType(url),
+            logo: currentInfo.logo || '',
+            group: currentInfo.group || 'Uncategorized',
+            addedAt: Date.now()
+          });
+          currentInfo = {};
+        }
+      }
+    }
+    return channels;
+  },
+
+  parseTXT(content) {
+    const lines = content.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    return lines.filter(l => this.isValidURL(l)).map(url => ({
+      id: this.generateId(),
+      name: this.extractNameFromURL(url),
+      url: url.trim(),
+      type: this.detectLinkType(url),
+      logo: '',
+      group: 'Imported',
+      addedAt: Date.now()
+    }));
+  },
+
+  extractNameFromURL(url) {
+    try {
+      const u = new URL(url);
+      const path = u.pathname.split('/').filter(p => p);
+      if (path.length > 0) {
+        let name = decodeURIComponent(path[path.length - 1]);
+        name = name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+        name = name.replace(/\b\w/g, c => c.toUpperCase());
+        return name || u.hostname;
+      }
+      return u.hostname;
+    } catch {
+      return 'Unknown Channel';
+    }
+  },
+
+  generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  },
+
+  // ========== FILE HANDLING ==========
+  
+  triggerFileInput(id) {
+    document.getElementById(id).click();
+  },
+
+  handleFileUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      let channels = type === 'm3u' ? this.parseM3U(content) : this.parseTXT(content);
+
+      if (channels.length > 0) {
+        this.playlist = [...this.playlist, ...channels];
+        this.savePlaylist();
+        this.updateFilterBar();
+        this.renderPlaylist();
+        this.updateStats();
+        this.toast(`Added ${channels.length} channels`, 'success');
+        this.navigate('playlist');
+      } else {
+        this.toast('No valid channels found', 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  },
+
+  // ========== ADD LINKS ==========
+  
+  addPastedLinks() {
+    const input = document.getElementById('paste-input');
+    const text = input.value.trim();
+    if (!text) {
+      this.toast('Please enter at least one URL', 'warning');
+      return;
+    }
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    let added = 0;
+
+    if (lines[0] && lines[0].startsWith('#EXTM3U')) {
+      const channels = this.parseM3U(text);
+      this.playlist = [...this.playlist, ...channels];
+      added = channels.length;
+    } else {
+      lines.forEach(line => {
+        if (this.isValidURL(line)) {
+          this.playlist.push({
+            id: this.generateId(),
+            name: this.extractNameFromURL(line),
+            url: line,
+            type: this.detectLinkType(line),
+            logo: '',
+            group: 'Custom',
+            addedAt: Date.now()
+          });
+          added++;
+        }
+      });
+    }
+
+    if (added > 0) {
+      this.savePlaylist();
+      this.updateFilterBar();
+      this.renderPlaylist();
+      this.updateStats();
+      this.toast(`Added ${added} channels`, 'success');
+      input.value = '';
+      this.closeModal('modal-paste');
+      this.navigate('playlist');
+    } else {
+      this.toast('No valid URLs found', 'error');
+    }
+  },
+
+  async fetchPlaylistFromURL() {
+    const input = document.getElementById('fetch-url-input');
+    const url = input.value.trim();
+
+    if (!this.isValidURL(url)) {
+      this.toast('Please enter a valid URL', 'error');
+      return;
+    }
+
+    this.toast('Fetching playlist...', 'info');
+
+    try {
+      // Try direct fetch first
+      let content;
+      try {
+        const response = await fetch(url, { mode: 'cors' });
+        content = await response.text();
+      } catch {
+        // Use proxy if direct fetch fails
+        if (this.apiConnected) {
+          const response = await fetch(this.getProxyUrl(url));
+          content = await response.text();
+        } else {
+          throw new Error('CORS blocked and no API available');
+        }
+      }
+
+      let channels = content.includes('#EXTM3U') ? this.parseM3U(content) : this.parseTXT(content);
+
+      if (channels.length > 0) {
+        this.playlist = [...this.playlist, ...channels];
+        this.savePlaylist();
+        this.updateFilterBar();
+        this.renderPlaylist();
+        this.updateStats();
+        this.toast(`Added ${channels.length} channels`, 'success');
+        input.value = '';
+        this.closeModal('modal-url');
+        this.navigate('playlist');
+      } else {
+        this.toast('No valid channels found', 'error');
+      }
+    } catch (err) {
+      this.toast(`Fetch failed: ${err.message}`, 'error');
+    }
+  },
+
+  // ========== PLAYLIST RENDERING ==========
+  
+  renderPlaylist() {
+    const container = document.getElementById('playlist-container');
+    const emptyState = document.getElementById('empty-playlist');
+    const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+
+    this.filteredPlaylist = this.playlist.filter(item => {
+      const matchesSearch = !searchTerm ||
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.url.toLowerCase().includes(searchTerm) ||
+        (item.group && item.group.toLowerCase().includes(searchTerm));
+      const matchesGroup = this.currentGroup === 'all' ||
+        (item.group && item.group === this.currentGroup);
+      return matchesSearch && matchesGroup;
+    });
+
+    this.applySorting();
+    document.getElementById('playlist-count').textContent = `${this.filteredPlaylist.length} items`;
+
+    if (this.filteredPlaylist.length === 0) {
+      container.innerHTML = '';
+      emptyState.style.display = 'block';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+    const viewMode = this.settings.viewMode;
+
+    let html = '';
+    const viewClass = viewMode === 'grid' ? 'grid-view' : viewMode === 'compact' ? 'compact-grid' : viewMode === 'card' ? 'card-view' : '';
+
+    if (viewClass) html += `<div class="${viewClass}">`;
+
+    this.filteredPlaylist.forEach((item) => {
+      const realIdx = this.playlist.indexOf(item);
+      const escapedName = this.sanitize(item.name);
+      const escapedGroup = this.sanitize(item.group || '');
+      const logoHTML = item.logo ? `<img src="${this.sanitize(item.logo)}" alt="" loading="lazy" onerror="this.style.display='none'">` : `<span class="icon icon-play" style="width:16px;height:16px;"></span>`;
+
+      if (viewMode === 'list') {
+        html += `
+          <div class="playlist-item-list" onclick="App.playItem(${realIdx})">
+            <div class="item-thumb">
+              ${logoHTML}
+              <span class="type-badge">${this.sanitize(item.type)}</span>
+            </div>
+            <div class="item-info">
+              <div class="item-title">${escapedName}</div>
+              <div class="item-meta">${escapedGroup} | ${item.type.toUpperCase()}</div>
+            </div>
+            <div class="item-actions">
+              <button class="btn btn-sm btn-icon" onclick="event.stopPropagation(); App.removeItem(${realIdx})" aria-label="Remove">
+                <span class="icon icon-close" style="width:14px;height:14px;"></span>
+              </button>
+            </div>
+          </div>`;
+      } else if (viewMode === 'grid') {
+        html += `
+          <div class="playlist-item-grid" onclick="App.playItem(${realIdx})">
+            <div class="item-thumb">
+              ${logoHTML}
+              <span class="type-badge">${this.sanitize(item.type)}</span>
+            </div>
+            <div class="item-info">
+              <div class="item-title">${escapedName}</div>
+              <div class="item-meta">${escapedGroup}</div>
+            </div>
+          </div>`;
+      } else if (viewMode === 'compact') {
+        html += `
+          <div class="playlist-item-compact" onclick="App.playItem(${realIdx})">
+            <div class="item-thumb">
+              ${logoHTML}
+              <span class="type-badge">${this.sanitize(item.type)}</span>
+            </div>
+            <div class="item-title">${escapedName}</div>
+          </div>`;
+      } else if (viewMode === 'card') {
+        html += `
+          <div class="playlist-item-card" onclick="App.playItem(${realIdx})">
+            <div class="item-thumb">
+              ${logoHTML}
+              <span class="type-badge">${this.sanitize(item.type)}</span>
+            </div>
+            <div class="item-info">
+              <div class="item-title">${escapedName}</div>
+              <div class="item-meta">${escapedGroup} | ${item.type.toUpperCase()}</div>
+            </div>
+          </div>`;
+      }
+    });
+
+    if (viewClass) html += '</div>';
+    container.innerHTML = html;
+  },
+
+  filterPlaylist() { this.renderPlaylist(); },
+
+  filterByGroup(group, element) {
+    this.currentGroup = group;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    if (element) element.classList.add('active');
+    this.renderPlaylist();
+  },
+
+  updateFilterBar() {
+    const bar = document.getElementById('filter-bar');
+    const groups = new Set();
+    this.playlist.forEach(item => { if (item.group) groups.add(item.group); });
+
+    let html = '<button class="filter-chip active" data-group="all" onclick="App.filterByGroup(\'all\', this)">All</button>';
+    [...groups].sort().forEach(group => {
+      html += `<button class="filter-chip" onclick="App.filterByGroup('${this.sanitize(group).replace(/'/g, "\\'")}', this)">${this.sanitize(group)}</button>`;
+    });
+    bar.innerHTML = html;
+  },
+
+  applySorting() {
+    const mode = this.settings.sortMode;
+    switch (mode) {
+      case 'name-asc': this.filteredPlaylist.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case 'name-desc': this.filteredPlaylist.sort((a, b) => b.name.localeCompare(a.name)); break;
+      case 'type': this.filteredPlaylist.sort((a, b) => (a.type || '').localeCompare(b.type || '')); break;
+    }
+  },
+
+  sortPlaylist(mode) {
+    this.settings.sortMode = mode;
+    this.saveSettings();
+    document.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('sort-menu').classList.remove('show');
+    this.renderPlaylist();
+  },
+
+  toggleSortMenu() { document.getElementById('sort-menu').classList.toggle('show'); },
+
+  cycleView() {
+    const modes = ['list', 'grid', 'compact', 'card'];
+    const current = modes.indexOf(this.settings.viewMode);
+    this.settings.viewMode = modes[(current + 1) % modes.length];
+    this.saveSettings();
+    document.getElementById('setting-view').value = this.settings.viewMode;
+    this.renderPlaylist();
+    this.toast(`View: ${this.settings.viewMode}`, 'info');
+  },
+
+  removeItem(index) {
+    if (index >= 0 && index < this.playlist.length) {
+      this.playlist.splice(index, 1);
+      this.savePlaylist();
+      this.updateFilterBar();
+      this.renderPlaylist();
+      this.updateStats();
+      this.toast('Removed', 'success');
+    }
+  },
+
+  // ========== PLAYER ==========
+  
+  async playItem(index) {
+    if (index < 0 || index >= this.playlist.length) return;
+
+    this.currentIndex = index;
+    const item = this.playlist[index];
+    const mode = this.settings.playerMode;
+
+    if (mode === 'intent') {
+      this.openIntent(item.url);
+      return;
+    }
+
+    this.navigate('player');
+    this.showPlayerLoading(true);
+
+    document.getElementById('player-title').textContent = this.sanitize(item.name);
+    document.getElementById('player-url').textContent = item.url;
+
+    this.addToRecent(item);
+    this.currentSources = [];
+
+    const type = item.type;
+    let streamUrl = item.url;
+    let resolvedData = null;
+    let playMethod = 'direct';
+
+    // Handle special types with API
+    if ((type === 'pixeldrain' || type === 'cyberfile') && this.apiConnected) {
+      this.toast('Resolving link...', 'info');
+      
+      try {
+        resolvedData = await this.resolveLink(item.url, type);
+        
+        if (resolvedData.success) {
+          // Build sources list
+          if (resolvedData.sources && resolvedData.sources.length > 0) {
+            this.currentSources = resolvedData.sources;
+            streamUrl = this.settings.useProxy ? resolvedData.sources[0].proxyUrl : resolvedData.sources[0].url;
+            playMethod = this.settings.useProxy ? 'proxy' : 'direct';
+          } else if (resolvedData.directUrl) {
+            streamUrl = this.settings.useProxy && resolvedData.proxyUrl ? resolvedData.proxyUrl : resolvedData.directUrl;
+            playMethod = this.settings.useProxy ? 'proxy' : 'direct';
+            this.currentSources = [{
+              url: resolvedData.directUrl,
+              proxyUrl: resolvedData.proxyUrl || this.getProxyUrl(resolvedData.directUrl),
+              quality: 'default'
+            }];
+          } else if (resolvedData.embedUrl) {
+            streamUrl = resolvedData.embedUrl;
+            playMethod = 'iframe';
+          }
+        } else if (resolvedData.iframeOnly || resolvedData.embedUrl) {
+          streamUrl = resolvedData.embedUrl || resolvedData.iframeUrl || item.url;
+          playMethod = 'iframe';
+        }
+      } catch (e) {
+        console.error('Resolve error:', e);
+        // Fallback to iframe for these types
+        playMethod = 'iframe';
+      }
+    } else if (type === 'pixeldrain') {
+      // No API - try direct Pixeldrain API format
+      const match = item.url.match(/pixeldrain\.com\/u\/([a-zA-Z0-9]+)/);
+      if (match) {
+        streamUrl = `https://pixeldrain.com/api/file/${match[1]}`;
+        playMethod = 'native';
+      } else {
+        playMethod = 'iframe';
+        streamUrl = item.url.includes('?embed') ? item.url : item.url + '?embed';
+      }
+    } else if (type === 'cyberfile') {
+      // No API - use iframe
+      playMethod = 'iframe';
+    }
+
+    // Render source selector
+    this.renderSourceSelector();
+
+    // Choose player based on mode or playMethod
+    if (mode === 'iframe' || playMethod === 'iframe') {
+      this.playIframe(streamUrl);
+      this.updateModeBadge('iframe');
+    } else if (mode === 'hls' || (mode === 'auto' && this.detectLinkType(streamUrl) === 'hls')) {
+      this.playHLS(streamUrl);
+      this.updateModeBadge('hls');
+    } else if (mode === 'dash' || (mode === 'auto' && this.detectLinkType(streamUrl) === 'dash')) {
+      this.playDASH(streamUrl);
+      this.updateModeBadge('dash');
+    } else {
+      this.playNative(streamUrl);
+      this.updateModeBadge(playMethod === 'proxy' ? 'proxy' : type);
+    }
+
+    this.renderMiniPlaylist();
+  },
+
+  /**
+   * Render source selector if multiple sources available
+   */
+  renderSourceSelector() {
+    const container = document.getElementById('source-selector');
+    const list = document.getElementById('source-list');
+
+    if (this.currentSources.length <= 1) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    let html = '';
+    this.currentSources.forEach((source, idx) => {
+      const activeClass = idx === 0 ? 'active' : '';
+      html += `
+        <div class="source-item ${activeClass}" onclick="App.switchSource(${idx})">
+          <span class="quality">${this.sanitize(source.quality || 'Source ' + (idx + 1))}</span>
+          <span class="url">${this.sanitize(source.url)}</span>
+        </div>`;
+    });
+    list.innerHTML = html;
+  },
+
+  /**
+   * Switch to a different source
+   */
+  switchSource(idx) {
+    if (idx >= this.currentSources.length) return;
+
+    const source = this.currentSources[idx];
+    const streamUrl = this.settings.useProxy && source.proxyUrl ? source.proxyUrl : source.url;
+
+    // Update UI
+    document.querySelectorAll('.source-item').forEach((el, i) => {
+      el.classList.toggle('active', i === idx);
+    });
+
+    // Detect type and play
+    const type = this.detectLinkType(streamUrl);
+    if (type === 'hls') {
+      this.playHLS(streamUrl);
+    } else if (type === 'dash') {
+      this.playDASH(streamUrl);
+    } else {
+      this.playNative(streamUrl);
+    }
+  },
+
+  showPlayerLoading(show) {
+    document.getElementById('player-loading').style.display = show ? 'flex' : 'none';
+  },
+
+  playNative(url) {
+    this.destroyPlayers();
+    const container = document.getElementById('player-container');
+    const loading = document.getElementById('player-loading');
+    
+    container.innerHTML = `<div class="player-loading" id="player-loading" style="display:flex;"><div class="spinner"></div></div><video id="video-player" controls playsinline style="display:none;"></video>`;
+    
+    const video = document.getElementById('video-player');
+    video.src = url;
+    
+    video.onloadeddata = () => {
+      document.getElementById('player-loading').style.display = 'none';
+      video.style.display = 'block';
+    };
+    
+    video.onerror = () => {
+      this.toast('Playback failed, trying HLS...', 'warning');
+      this.playHLS(url);
+    };
+    
+    video.play().catch(() => {});
+  },
+
+  playHLS(url) {
+    this.destroyPlayers();
+    const container = document.getElementById('player-container');
+    container.innerHTML = `<div class="player-loading" id="player-loading" style="display:flex;"><div class="spinner"></div></div><video id="video-player" controls playsinline style="display:none;"></video>`;
+    const video = document.getElementById('video-player');
+
+    if (typeof Hls === 'undefined') {
+      this.toast('HLS.js not loaded', 'error');
+      this.playNative(url);
+      return;
+    }
+
+    if (Hls.isSupported()) {
+      this.hlsInstance = new Hls({ maxBufferLength: 30, enableWorker: true });
+      this.hlsInstance.loadSource(url);
+      this.hlsInstance.attachMedia(video);
+      this.hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        document.getElementById('player-loading').style.display = 'none';
+        video.style.display = 'block';
+        video.play().catch(() => {});
+      });
+      this.hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            this.hlsInstance.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            this.hlsInstance.recoverMediaError();
+          } else {
+            this.toast('HLS error, trying iframe...', 'error');
+            this.playIframe(url);
+          }
+        }
+      });
+      this.updateModeBadge('hls');
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url;
+      video.onloadeddata = () => {
+        document.getElementById('player-loading').style.display = 'none';
+        video.style.display = 'block';
+      };
+      video.play().catch(() => {});
+    } else {
+      this.toast('HLS not supported', 'error');
+      this.playNative(url);
+    }
+  },
+
+  playDASH(url) {
+    this.destroyPlayers();
+    const container = document.getElementById('player-container');
+    container.innerHTML = `<div class="player-loading" id="player-loading" style="display:flex;"><div class="spinner"></div></div><video id="video-player" controls playsinline style="display:none;"></video>`;
+    const video = document.getElementById('video-player');
+
+    if (typeof dashjs === 'undefined') {
+      this.toast('DASH.js not loaded', 'error');
+      this.playNative(url);
+      return;
+    }
+
+    try {
+      this.dashInstance = dashjs.MediaPlayer().create();
+      this.dashInstance.initialize(video, url, true);
+      this.dashInstance.on('playbackStarted', () => {
+        document.getElementById('player-loading').style.display = 'none';
+        video.style.display = 'block';
+      });
+      this.dashInstance.on('error', () => {
+        this.toast('DASH error', 'error');
+      });
+      this.updateModeBadge('dash');
+    } catch (err) {
+      this.playNative(url);
+    }
+  },
+
+  playIframe(url) {
+    this.destroyPlayers();
+    const container = document.getElementById('player-container');
+    
+    // For pixeldrain, ensure embed parameter
+    if (url.includes('pixeldrain.com/u/') && !url.includes('embed')) {
+      url = url.includes('?') ? url + '&embed' : url + '?embed';
+    }
+    
+    container.innerHTML = `
+      <iframe 
+        src="${this.sanitize(url)}" 
+        allowfullscreen 
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        style="width:100%;height:56.25vw;max-height:60vh;border:none;display:block;background:#000;">
+      </iframe>`;
+    
+    this.updateModeBadge('iframe');
+    this.showPlayerLoading(false);
+  },
+
+  destroyPlayers() {
+    if (this.hlsInstance) {
+      this.hlsInstance.destroy();
+      this.hlsInstance = null;
+    }
+    if (this.dashInstance) {
+      this.dashInstance.reset();
+      this.dashInstance = null;
+    }
+    const video = document.getElementById('video-player');
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+  },
+
+  updateModeBadge(mode) {
+    const badge = document.getElementById('player-mode-badge');
+    const modeMap = { hls: 'HLS', dash: 'DASH', mp4: 'MP4', iframe: 'IFRAME', native: 'NATIVE', pixeldrain: 'PIXEL', cyberfile: 'CYBER', proxy: 'PROXY', unknown: 'AUTO' };
+    badge.textContent = modeMap[mode] || mode.toUpperCase();
+    badge.className = `mode-badge ${this.getTypeBadgeClass(mode)}`;
+  },
+
+  renderMiniPlaylist() {
+    const container = document.getElementById('mini-playlist');
+    let html = '';
+    const start = Math.max(0, this.currentIndex - 1);
+    const end = Math.min(this.playlist.length, this.currentIndex + 10);
+
+    for (let i = start; i < end; i++) {
+      const item = this.playlist[i];
+      const isActive = i === this.currentIndex;
+      html += `
+        <div class="playlist-item-list" onclick="App.playItem(${i})" style="${isActive ? 'border-color:var(--accent);background:var(--accent-glow);' : ''}">
+          <div class="item-thumb">
+            <span class="icon icon-play" style="width:14px;height:14px;${isActive ? 'color:var(--accent);' : ''}"></span>
+          </div>
+          <div class="item-info">
+            <div class="item-title">${this.sanitize(item.name)}</div>
+            <div class="item-meta">${item.type ? item.type.toUpperCase() : 'UNKNOWN'}</div>
+          </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+  },
+
+  // ========== ANDROID INTENT ==========
+  
+  openIntent(url, pkg) {
+    const cleanUrl = url.replace(/^https?:\/\//, '');
+    const intentUrl = `intent://${cleanUrl}#Intent;type=video/*;${pkg ? 'package=' + pkg + ';' : ''}end`;
+    window.location.href = intentUrl;
+  },
+
+  openExternal() {
+    if (this.currentIndex < 0) { this.toast('No stream playing', 'warning'); return; }
+    const url = this.currentSources[0]?.url || this.playlist[this.currentIndex].url;
+    this.openIntent(url);
+  },
+
+  openInLeone() {
+    if (this.currentIndex < 0) { this.toast('No stream playing', 'warning'); return; }
+    const url = this.currentSources[0]?.url || this.playlist[this.currentIndex].url;
+    this.openIntent(url, 'com.genuine.leone');
+  },
+
+  openChooser() {
+    if (this.currentIndex < 0) { this.toast('No stream playing', 'warning'); return; }
+    const url = this.currentSources[0]?.url || this.playlist[this.currentIndex].url;
+    const cleanUrl = url.replace(/^https?:\/\//, '');
+    const intentUrl = `intent://${cleanUrl}#Intent;type=video/*;action=android.intent.action.VIEW;end`;
+    window.location.href = intentUrl;
+  },
+
+  copyStreamLink() {
+    if (this.currentIndex < 0) { this.toast('No stream playing', 'warning'); return; }
+    const url = this.currentSources[0]?.url || this.playlist[this.currentIndex].url;
+
+    navigator.clipboard.writeText(url).then(() => {
+      this.toast('Link copied!', 'success');
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      this.toast('Link copied!', 'success');
+    });
+  },
+
+  // ========== RECENTLY PLAYED ==========
+  
+  addToRecent(item) {
+    this.recentlyPlayed = this.recentlyPlayed.filter(r => r.url !== item.url);
+    this.recentlyPlayed.unshift({ ...item, playedAt: Date.now() });
+    if (this.recentlyPlayed.length > 20) this.recentlyPlayed = this.recentlyPlayed.slice(0, 20);
+    this.saveRecent();
+    this.renderRecent();
+  },
+
+  renderRecent() {
+    const container = document.getElementById('recent-list');
+    const header = document.getElementById('recent-header');
+
+    if (this.recentlyPlayed.length === 0) {
+      header.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+
+    header.style.display = '';
+    let html = '';
+    this.recentlyPlayed.slice(0, 5).forEach(item => {
+      const idx = this.playlist.findIndex(p => p.url === item.url);
+      html += `
+        <div class="playlist-item-list" onclick="App.playItem(${idx >= 0 ? idx : -1})">
+          <div class="item-thumb">
+            <span class="icon icon-play" style="width:14px;height:14px;"></span>
+          </div>
+          <div class="item-info">
+            <div class="item-title">${this.sanitize(item.name)}</div>
+            <div class="item-meta">${item.type ? item.type.toUpperCase() : ''} | ${this.timeAgo(item.playedAt)}</div>
+          </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+  },
+
+  clearRecent() {
+    this.recentlyPlayed = [];
+    this.saveRecent();
+    this.renderRecent();
+    this.toast('History cleared', 'success');
+  },
+
+  timeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  },
+
+  // ========== STATS ==========
+  
+  updateStats() {
+    document.getElementById('stat-total').textContent = this.playlist.length;
+    const groups = new Set(this.playlist.map(i => i.group).filter(g => g));
+    document.getElementById('stat-groups').textContent = groups.size;
+    document.getElementById('stat-saved').textContent = this.recentlyPlayed.length;
+  },
+
+  // ========== STORAGE ==========
+  
+  savePlaylist() {
+    try { localStorage.setItem('spwa_playlist', JSON.stringify(this.playlist)); } catch {}
+  },
+  loadPlaylist() {
+    try { this.playlist = JSON.parse(localStorage.getItem('spwa_playlist')) || []; this.updateFilterBar(); } catch { this.playlist = []; }
+  },
+  saveSettings() { localStorage.setItem('spwa_settings', JSON.stringify(this.settings)); },
+  loadSettings() {
+    try { this.settings = { ...this.settings, ...JSON.parse(localStorage.getItem('spwa_settings') || '{}') }; } catch {}
+  },
+  saveSetting(key, value) { this.settings[key] = value; this.saveSettings(); },
+  saveRecent() { try { localStorage.setItem('spwa_recent', JSON.stringify(this.recentlyPlayed)); } catch {} },
+  loadRecent() { try { this.recentlyPlayed = JSON.parse(localStorage.getItem('spwa_recent')) || []; } catch { this.recentlyPlayed = []; } },
+
+  exportPlaylist() {
+    const data = { version: 1, exportDate: new Date().toISOString(), playlist: this.playlist, settings: this.settings, recent: this.recentlyPlayed };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `streampwa-backup-${Date.now()}.json`;
+    a.click();
+    this.toast('Exported!', 'success');
+  },
+
+  handleImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.playlist) this.playlist = data.playlist;
+        if (data.settings) this.settings = { ...this.settings, ...data.settings };
+        if (data.recent) this.recentlyPlayed = data.recent;
+        this.savePlaylist(); this.saveSettings(); this.saveRecent();
+        this.updateFilterBar(); this.renderPlaylist(); this.renderRecent(); this.updateStats(); this.applyTheme();
+        this.toast('Imported!', 'success');
+      } catch { this.toast('Invalid file', 'error'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  },
+
+  clearAllData() {
+    if (confirm('Delete all data?')) {
+      localStorage.clear();
+      this.playlist = []; this.recentlyPlayed = [];
+      this.settings = { playerMode: 'auto', theme: 'dark', viewMode: 'list', sortMode: 'default', apiUrl: '', useProxy: false };
+      this.updateFilterBar(); this.renderPlaylist(); this.renderRecent(); this.updateStats(); this.applyTheme();
+      this.toast('Cleared!', 'success');
+    }
+  },
+
+  async clearCache() {
+    if ('caches' in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map(n => caches.delete(n)));
+      this.toast('Cache cleared!', 'success');
+    }
+  },
+
+  // ========== THEME ==========
+  
+  toggleTheme() {
+    const toggle = document.getElementById('setting-dark-theme');
+    this.settings.theme = this.settings.theme === 'dark' ? 'light' : 'dark';
+    toggle.classList.toggle('active', this.settings.theme === 'dark');
+    this.saveSettings();
+    this.applyTheme();
+  },
+
+  toggleProxy() {
+    const toggle = document.getElementById('setting-use-proxy');
+    this.settings.useProxy = !this.settings.useProxy;
+    toggle.classList.toggle('active', this.settings.useProxy);
+    this.saveSettings();
+    this.toast(`Proxy ${this.settings.useProxy ? 'enabled' : 'disabled'}`, 'info');
+  },
+
+  applyTheme() {
+    if (this.settings.theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.querySelector('meta[name="theme-color"]').content = '#f0f0f8';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.querySelector('meta[name="theme-color"]').content = '#0a0a1a';
+    }
+    const btn = document.getElementById('theme-toggle');
+    btn.querySelector('.icon').className = `icon ${this.settings.theme === 'dark' ? 'icon-moon' : 'icon-sun'}`;
+  },
+
+  // ========== MODALS ==========
+  
+  showModal(id) { document.getElementById(id)?.classList.add('active'); },
+  closeModal(id) { document.getElementById(id)?.classList.remove('active'); },
+  closeModalOnBg(event) { if (event.target === event.currentTarget) event.currentTarget.classList.remove('active'); },
+
+  // ========== PWA ==========
+  
+  setupPWA() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredPrompt = e;
+      document.getElementById('install-btn').style.display = '';
+      document.getElementById('install-banner').classList.add('show');
+    });
+    window.addEventListener('appinstalled', () => {
+      document.getElementById('install-btn').style.display = 'none';
+      document.getElementById('install-banner').classList.remove('show');
+      this.toast('Installed!', 'success');
+    });
+  },
+
+  async installPWA() {
+    if (this.deferredPrompt) {
+      this.deferredPrompt.prompt();
+      await this.deferredPrompt.userChoice;
+      this.deferredPrompt = null;
+    } else {
+      this.toast('Add to home screen from browser menu', 'info');
+    }
+  },
+
+  registerSW() {
+    if ('serviceWorker' in navigator) {
+      const sw = `const C='spwa-v1';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))});`;
+      const blob = new Blob([sw], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+  },
+
+  setupPullToRefresh() {
+    let startY = 0, pulling = false;
+    const indicator = document.getElementById('pull-indicator');
+    const main = document.getElementById('main-content');
+
+    main.addEventListener('touchstart', (e) => { if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; } }, { passive: true });
+    main.addEventListener('touchmove', (e) => { if (pulling && e.touches[0].clientY - startY > 60 && window.scrollY === 0) indicator.classList.add('visible'); }, { passive: true });
+    main.addEventListener('touchend', () => {
+      if (indicator.classList.contains('visible')) {
+        this.renderPlaylist(); this.renderRecent(); this.updateStats(); this.checkApiStatus();
+        this.toast('Refreshed!', 'success');
+        setTimeout(() => indicator.classList.remove('visible'), 500);
+      }
+      pulling = false;
+    }, { passive: true });
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+</body>
+</html>

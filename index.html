@@ -1,0 +1,2510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xtream Codes Playlist Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #6c63ff;
+            --accent-hover: #5a52d5;
+            --accent-glow: rgba(108, 99, 255, 0.4);
+            --success: #00d4aa;
+            --danger: #ff6b6b;
+            --warning: #feca57;
+        }
+
+        /* Fully Black Theme */
+        body.theme-black {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 15px;
+            overflow-x: hidden;
+            transition: background 0.3s ease;
+        }
+
+        body.theme-black {
+            background: #000000;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* CSS Icons */
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        .icon svg {
+            width: 100%;
+            height: 100%;
+            fill: currentColor;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 25px 20px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .header h1 {
+            font-size: clamp(1.3rem, 4vw, 2rem);
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .card-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .card-header .icon {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
+        }
+
+        /* User Info Card */
+        .user-info-card {
+            background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(0, 212, 170, 0.1));
+            border: 1px solid var(--accent);
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .user-info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .user-info-header svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--accent);
+        }
+
+        .user-info-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .user-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .user-info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .user-info-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-info-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-value.status-active {
+            color: var(--success);
+        }
+
+        .user-info-value.status-expired {
+            color: var(--danger);
+        }
+
+        .user-info-value.status-warning {
+            color: var(--warning);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 15px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        /* Copy Input */
+        .copy-input-group {
+            position: relative;
+        }
+
+        .copy-input-group input {
+            padding-right: 45px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* Color Picker */
+        .color-picker-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-option {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: white;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .color-option.custom {
+            background: linear-gradient(135deg, #ff0000, #00ff00, #0000ff, #ff00ff);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-option.custom input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Button Styles */
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-group.single {
+            grid-template-columns: 1fr;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--accent);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--accent-glow);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn .icon {
+            margin-right: 0;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-success:hover {
+            background: #00b894;
+            box-shadow: 0 5px 20px rgba(0, 212, 170, 0.4);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #feb62c;
+            box-shadow: 0 5px 20px rgba(254, 202, 87, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #ee5a52;
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* History */
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+        }
+
+        .history-item-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .history-item-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .history-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .history-item-server {
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-user {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .history-item-date {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .history-item-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover .history-item-btn {
+            opacity: 1;
+        }
+
+        .history-item-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--text-secondary);
+        }
+
+        .history-item-btn:hover {
+            background: var(--danger);
+        }
+
+        .history-item-btn:hover svg {
+            fill: white;
+        }
+
+        .history-item-btn.copy-link:hover {
+            background: var(--accent);
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .history-empty svg {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 15px;
+            opacity: 0.4;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-secondary);
+        }
+
+        .controls select {
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            min-width: 120px;
+        }
+
+        .controls select option {
+            background: var(--bg-secondary);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 3px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .view-toggle button {
+            padding: 8px 14px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-toggle button svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .view-toggle button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Export Info Badge */
+        .export-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: rgba(108, 99, 255, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+
+        .export-info svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* Channel List */
+        .channel-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .channel-list.grid-view {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        }
+
+        .channel-list.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .channel-item {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .channel-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .channel-logo-wrap {
+            width: 100%;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .channel-logo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .channel-logo-placeholder {
+            width: 40px;
+            height: 40px;
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        .channel-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-category {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .channel-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .channel-actions button svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .action-play {
+            background: var(--success);
+            color: white;
+        }
+
+        .action-edit {
+            background: var(--warning);
+            color: #333;
+        }
+
+        .action-delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* List View Mobile Optimized */
+        .list-view .channel-item {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .list-view .channel-logo-wrap {
+            grid-row: 1 / 3;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 0;
+        }
+
+        .list-view .channel-info {
+            align-self: center;
+        }
+
+        .list-view .channel-actions {
+            grid-column: 1 / -1;
+            margin-top: 5px;
+        }
+
+        /* Type Badge */
+        .type-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .type-badge.live {
+            background: var(--danger);
+            color: white;
+        }
+
+        .type-badge.vod {
+            background: var(--success);
+            color: white;
+        }
+
+        .type-badge.series {
+            background: var(--warning);
+            color: #333;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            max-width: 550px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 25px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .modal-header h2 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-header h2 svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--accent);
+        }
+
+        .modal-close {
+            background: var(--danger);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: #ee5a52;
+        }
+
+        .modal-close svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* Video Player */
+        .video-player {
+            width: 100%;
+            max-width: 100%;
+            background: black;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: auto;
+            min-height: 250px;
+            display: block;
+        }
+
+        /* Settings */
+        .setting-section {
+            margin-bottom: 25px;
+        }
+
+        .setting-section-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-section-title svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .setting-label svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent);
+        }
+
+        .setting-label span {
+            font-size: 0.95rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: 0.4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            left: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--glass-border);
+            padding: 14px 18px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            transform: translateY(150%);
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.success .toast-icon {
+            fill: var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast.error .toast-icon {
+            fill: var(--danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .toast.warning .toast-icon {
+            fill: var(--warning);
+        }
+
+        @media (min-width: 600px) {
+            .toast {
+                left: auto;
+                max-width: 400px;
+            }
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+            fill: currentColor;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .glass-card {
+                padding: 15px;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group .btn-full {
+                grid-column: 1;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .controls .search-box {
+                width: 100%;
+            }
+
+            .controls select {
+                width: 100%;
+            }
+
+            .view-toggle {
+                align-self: center;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+
+            .channel-list.grid-view {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .stat-number {
+                font-size: 1.2rem;
+            }
+
+            .user-info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z"/></svg>
+            </div>
+            <h1>Xtream Playlist Extractor</h1>
+            <p>Extract, manage, and export your IPTV playlists</p>
+        </div>
+
+        <!-- User Info Card -->
+        <div class="user-info-card" id="userInfoCard" style="display: none;">
+            <div class="user-info-header">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <h3>Account Information</h3>
+            </div>
+            <div class="user-info-grid" id="userInfoGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="glass-card" id="loginCard">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('manual')">
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Manual
+                </button>
+                <button class="tab" onclick="switchTab('import')">
+                    <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                    Import
+                </button>
+                <button class="tab" onclick="switchTab('history')">
+                    <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                    History
+                </button>
+            </div>
+
+            <!-- Manual Tab -->
+            <div class="tab-content active" id="tabManual">
+                <div class="form-group">
+                    <label>Server URL</label>
+                    <input type="text" id="serverUrl" placeholder="http://example.com:8080" />
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter username" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" />
+                </div>
+                <div class="btn-group">
+                    <button class="btn" onclick="fetchContent('live')">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+                        Live
+                    </button>
+                    <button class="btn" onclick="fetchContent('vod')">
+                        <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+                        Movies
+                    </button>
+                    <button class="btn" onclick="fetchContent('series')">
+                        <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+                        Series
+                    </button>
+                    <button class="btn btn-success" onclick="fetchAll()">
+                        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Fetch All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Import Tab -->
+            <div class="tab-content" id="tabImport">
+                <div class="form-group">
+                    <label>M3U / Xtream Link</label>
+                    <input type="text" id="importLink" placeholder="http://domain.com:8080/get.php?username=xxx&password=xxx&type=m3u" />
+                </div>
+                <div class="btn-group single">
+                    <button class="btn btn-success" onclick="importLink()">
+                        <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                        Parse & Import
+                    </button>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-content" id="tabHistory">
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+                        <p>No history yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats" id="statsContainer" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalChannels">0</div>
+                <div class="stat-label">Total Items</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCategories">0</div>
+                <div class="stat-label">Categories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="filteredChannels">0</div>
+                <div class="stat-label">Filtered</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="glass-card" id="controlsCard" style="display: none;">
+            <div class="controls">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="search" id="searchInput" placeholder="Search channels..." />
+                </div>
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="live">Live</option>
+                    <option value="vod">Movies</option>
+                    <option value="series">Series</option>
+                </select>
+                <div class="view-toggle">
+                    <button class="active" onclick="setView('grid')" title="Grid View">
+                        <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+                    </button>
+                    <button onclick="setView('list')" title="List View">
+                        <svg viewBox="0 0 24 24"><path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Export Info -->
+            <div class="export-info" id="exportInfo">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                <span id="exportInfoText">Export will include all <strong>0</strong> filtered items</span>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="exportM3U()">
+                    <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    Export M3U
+                </button>
+                <button class="btn btn-warning" onclick="downloadPlaylist()">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Download
+                </button>
+                <button class="btn" onclick="openSettings()">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    Settings
+                </button>
+                <button class="btn btn-danger" onclick="clearData()">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Channel List -->
+        <div class="glass-card" id="channelListCard" style="display: none;">
+            <div class="channel-list grid-view" id="channelList"></div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit Channel
+                </h2>
+                <button class="modal-close" onclick="closeModal('editModal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Channel Name</label>
+                <input type="text" id="editName" />
+            </div>
+            <div class="form-group">
+                <label>Group Title</label>
+                <input type="text" id="editGroup" />
+            </div>
+            <div class="form-group">
+                <label>Logo URL</label>
+                <input type="text" id="editLogo" />
+            </div>
+            <div class="form-group">
+                <label>Stream URL</label>
+                <div class="copy-input-group">
+                    <input type="text" id="editStreamUrl" readonly />
+                    <button class="copy-btn" onclick="copyStreamUrl()">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="saveEdit()">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    Save
+                </button>
+                <button class="btn btn-danger" onclick="closeModal('editModal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Modal -->
+    <div class="modal" id="playerModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <span id="playerTitleText">Channel Player</span>
+                </h2>
+                <button class="modal-close" onclick="closeModal('playerModal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+            <div class="video-player" id="videoPlayer"></div>
+            <div class="btn-group" style="margin-top: 15px;">
+                <button class="btn" onclick="openInExternalPlayer()">
+                    <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                    External Player
+                </button>
+                <button class="btn btn-outline" onclick="copyCurrentStreamUrl()">
+                    <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    Copy URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    Settings
+                </h2>
+                <button class="modal-close" onclick="closeModal('settingsModal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <!-- Theme Section -->
+            <div class="setting-section">
+                <div class="setting-section-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                    Theme
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <svg viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+                        <span>Fully Black Theme</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="blackTheme" onchange="applyTheme()" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Accent Color</label>
+                    <div class="color-picker-group">
+                        <div class="color-option active" style="background: #6c63ff;" data-color="#6c63ff" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #00d4aa;" data-color="#00d4aa" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #ff6b6b;" data-color="#ff6b6b" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #feca57;" data-color="#feca57" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #54a0ff;" data-color="#54a0ff" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #5f27cd;" data-color="#5f27cd" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #00cec9;" data-color="#00cec9" onclick="setAccentColor(this)"></div>
+                        <div class="color-option" style="background: #e84393;" data-color="#e84393" onclick="setAccentColor(this)"></div>
+                        <div class="color-option custom" title="Custom Color">
+                            <input type="color" id="customColor" value="#6c63ff" onchange="setCustomAccentColor(this.value)" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- General Section -->
+            <div class="setting-section">
+                <div class="setting-section-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    General
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                        <span>Remember Credentials</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="rememberCreds" checked onchange="saveSettings()" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Data Section -->
+            <div class="setting-section">
+                <div class="setting-section-title">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    Data Management
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="clearAllHistory()">
+                        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+                        Clear History
+                    </button>
+                    <button class="btn btn-danger" onclick="resetAllSettings()">
+                        <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                        Reset All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <svg class="toast-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- HLS.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <script>
+        // ========================================
+        // Global State
+        // ========================================
+        let currentChannels = [];
+        let filteredChannels = [];
+        let currentType = 'live';
+        let currentEditIndex = null;
+        let currentPlayUrl = '';
+        let userInfo = null;
+        let history = [];
+        let settings = {
+            blackTheme: false,
+            accentColor: '#6c63ff',
+            rememberCreds: true
+        };
+
+        // ========================================
+        // Initialization
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            applyTheme();
+            loadCredentials();
+            loadPlaylist();
+            loadHistory();
+            
+            // Event listeners
+            document.getElementById('searchInput').addEventListener('input', filterChannels);
+            document.getElementById('categoryFilter').addEventListener('change', filterChannels);
+            document.getElementById('typeFilter').addEventListener('change', filterChannels);
+        });
+
+        // ========================================
+        // Theme Management
+        // ========================================
+        function applyTheme() {
+            const blackTheme = document.getElementById('blackTheme').checked;
+            settings.blackTheme = blackTheme;
+            
+            if (blackTheme) {
+                document.body.classList.add('theme-black');
+            } else {
+                document.body.classList.remove('theme-black');
+            }
+            
+            saveSettings();
+        }
+
+        function setAccentColor(element) {
+            const color = element.dataset.color;
+            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+            element.classList.add('active');
+            
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--accent-hover', adjustColor(color, -20));
+            document.documentElement.style.setProperty('--accent-glow', color + '66');
+            
+            settings.accentColor = color;
+            saveSettings();
+        }
+
+        function setCustomAccentColor(color) {
+            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+            document.querySelector('.color-option.custom').classList.add('active');
+            
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--accent-hover', adjustColor(color, -20));
+            document.documentElement.style.setProperty('--accent-glow', color + '66');
+            
+            settings.accentColor = color;
+            saveSettings();
+        }
+
+        function adjustColor(color, amount) {
+            const hex = color.replace('#', '');
+            const num = parseInt(hex, 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+            return '#' + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+        }
+
+        // ========================================
+        // Tab Management
+        // ========================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.closest('.tab').classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+        }
+
+        // ========================================
+        // History Management
+        // ========================================
+        function loadHistory() {
+            const saved = localStorage.getItem('xtream_history');
+            if (saved) {
+                history = JSON.parse(saved);
+                renderHistory();
+            }
+        }
+
+        function saveHistoryData() {
+            localStorage.setItem('xtream_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function addToHistory(server, username, password) {
+            const link = generateM3ULink(server, username, password);
+            
+            history = history.filter(h => h.link !== link);
+            
+            history.unshift({
+                server: server,
+                username: username,
+                password: password,
+                link: link,
+                timestamp: Date.now()
+            });
+
+            history = history.slice(0, 10);
+            saveHistoryData();
+        }
+
+        function generateM3ULink(server, username, password) {
+            const cleanServer = server.replace(/\/+$/, '');
+            return `${cleanServer}/get.php?username=${username}&password=${password}&type=m3u`;
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="history-empty">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+                        <p>No history yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = history.map((item, index) => {
+                let serverHost = item.server;
+                try {
+                    serverHost = new URL(item.server).host;
+                } catch(e) {}
+                
+                const date = new Date(item.timestamp).toLocaleDateString();
+                
+                return `
+                    <div class="history-item" onclick="loadFromHistory(${index})">
+                        <div class="history-item-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        </div>
+                        <div class="history-item-info">
+                            <div class="history-item-server">${serverHost}</div>
+                            <div class="history-item-user">${item.username}</div>
+                            <div class="history-item-date">${date}</div>
+                        </div>
+                        <div class="history-item-actions">
+                            <button class="history-item-btn copy-link" onclick="copyHistoryLink(event, ${index})" title="Copy Link">
+                                <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                            <button class="history-item-btn" onclick="deleteHistoryItem(event, ${index})" title="Delete">
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadFromHistory(index) {
+            const item = history[index];
+            document.getElementById('serverUrl').value = item.server;
+            document.getElementById('username').value = item.username;
+            document.getElementById('password').value = item.password;
+            
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('.tab').classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById('tabManual').classList.add('active');
+            
+            showToast('Credentials loaded', 'success');
+        }
+
+        function copyHistoryLink(event, index) {
+            event.stopPropagation();
+            const item = history[index];
+            navigator.clipboard.writeText(item.link).then(() => {
+                showToast('Link copied to clipboard', 'success');
+            });
+        }
+
+        function deleteHistoryItem(event, index) {
+            event.stopPropagation();
+            history.splice(index, 1);
+            saveHistoryData();
+            showToast('History item deleted', 'success');
+        }
+
+        function clearAllHistory() {
+            if (confirm('Clear all history?')) {
+                history = [];
+                saveHistoryData();
+                showToast('History cleared', 'success');
+            }
+        }
+
+        // ========================================
+        // Import Link
+        // ========================================
+        function importLink() {
+            const link = document.getElementById('importLink').value.trim();
+            
+            if (!link) {
+                showToast('Please enter a link', 'error');
+                return;
+            }
+
+            try {
+                const url = new URL(link);
+                const username = url.searchParams.get('username');
+                const password = url.searchParams.get('password');
+                
+                if (!username || !password) {
+                    throw new Error('Invalid link');
+                }
+
+                const server = `${url.protocol}//${url.host}`;
+
+                document.getElementById('serverUrl').value = server;
+                document.getElementById('username').value = username;
+                document.getElementById('password').value = password;
+
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.querySelector('.tab').classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById('tabManual').classList.add('active');
+
+                showToast('Link parsed successfully', 'success');
+
+            } catch (error) {
+                showToast('Invalid link format', 'error');
+            }
+        }
+
+        // ========================================
+        // Settings Management
+        // ========================================
+        function loadSettings() {
+            const saved = localStorage.getItem('xtream_settings');
+            if (saved) {
+                settings = { ...settings, ...JSON.parse(saved) };
+                
+                document.getElementById('blackTheme').checked = settings.blackTheme;
+                document.getElementById('rememberCreds').checked = settings.rememberCreds;
+                
+                // Apply accent color
+                if (settings.accentColor) {
+                    document.documentElement.style.setProperty('--accent', settings.accentColor);
+                    document.documentElement.style.setProperty('--accent-hover', adjustColor(settings.accentColor, -20));
+                    document.documentElement.style.setProperty('--accent-glow', settings.accentColor + '66');
+                    
+                    // Highlight the correct color option
+                    document.querySelectorAll('.color-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.dataset.color === settings.accentColor) {
+                            opt.classList.add('active');
+                        }
+                    });
+                }
+            }
+        }
+
+        function saveSettings() {
+            settings.rememberCreds = document.getElementById('rememberCreds').checked;
+            localStorage.setItem('xtream_settings', JSON.stringify(settings));
+        }
+
+        function resetAllSettings() {
+            if (confirm('Reset all settings and data?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // ========================================
+        // Credentials Management
+        // ========================================
+        function loadCredentials() {
+            if (settings.rememberCreds) {
+                const creds = localStorage.getItem('xtream_creds');
+                if (creds) {
+                    const { server, username, password } = JSON.parse(creds);
+                    document.getElementById('serverUrl').value = server;
+                    document.getElementById('username').value = username;
+                    document.getElementById('password').value = password;
+                }
+            }
+        }
+
+        function saveCredentials(server, username, password) {
+            if (settings.rememberCreds) {
+                localStorage.setItem('xtream_creds', JSON.stringify({ server, username, password }));
+            }
+        }
+
+        // ========================================
+        // Playlist Storage
+        // ========================================
+        function loadPlaylist() {
+            const saved = localStorage.getItem('xtream_playlist');
+            if (saved) {
+                const data = JSON.parse(saved);
+                currentChannels = data.channels || [];
+                currentType = data.type || 'live';
+                userInfo = data.userInfo || null;
+                
+                if (currentChannels.length > 0) {
+                    displayChannels();
+                    displayUserInfo();
+                }
+            }
+        }
+
+        function savePlaylist() {
+            localStorage.setItem('xtream_playlist', JSON.stringify({
+                channels: currentChannels,
+                type: currentType,
+                userInfo: userInfo
+            }));
+        }
+
+        // ========================================
+        // User Info Display
+        // ========================================
+        function displayUserInfo() {
+            const card = document.getElementById('userInfoCard');
+            const grid = document.getElementById('userInfoGrid');
+            
+            if (!userInfo) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = 'block';
+
+            // Format expiry date
+            let expiryDisplay = 'N/A';
+            let expiryClass = '';
+            
+            if (userInfo.exp_date) {
+                const expDate = new Date(userInfo.exp_date * 1000);
+                const now = new Date();
+                const daysLeft = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+                
+                expiryDisplay = expDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                if (daysLeft < 0) {
+                    expiryClass = 'status-expired';
+                    expiryDisplay += ' (Expired)';
+                } else if (daysLeft <= 7) {
+                    expiryClass = 'status-warning';
+                    expiryDisplay += ` (${daysLeft}d left)`;
+                } else {
+                    expiryClass = 'status-active';
+                    expiryDisplay += ` (${daysLeft}d left)`;
+                }
+            }
+
+            // Status display
+            let statusClass = userInfo.status === 'Active' ? 'status-active' : 'status-expired';
+
+            grid.innerHTML = `
+                <div class="user-info-item">
+                    <div class="user-info-label">Username</div>
+                    <div class="user-info-value">${userInfo.username || 'N/A'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Status</div>
+                    <div class="user-info-value ${statusClass}">${userInfo.status || 'N/A'}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Expiry Date</div>
+                    <div class="user-info-value ${expiryClass}">${expiryDisplay}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Connections</div>
+                    <div class="user-info-value">${userInfo.active_cons || 0} / ${userInfo.max_connections || 1}</div>
+                </div>
+                ${userInfo.created_at ? `
+                <div class="user-info-item">
+                    <div class="user-info-label">Created</div>
+                    <div class="user-info-value">${new Date(userInfo.created_at * 1000).toLocaleDateString()}</div>
+                </div>
+                ` : ''}
+                ${userInfo.is_trial ? `
+                <div class="user-info-item">
+                    <div class="user-info-label">Account Type</div>
+                    <div class="user-info-value status-warning">Trial</div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        // ========================================
+        // API Fetch Functions
+        // ========================================
+        async function fetchContent(type) {
+            const server = document.getElementById('serverUrl').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!server || !username || !password) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML += '<span class="spinner"></span>';
+
+            try {
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ server, username, password, type })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch');
+                }
+
+                const streams = (data.streams || []).map(s => ({ ...s, streamType: type }));
+                
+                currentChannels = streams;
+                currentType = type;
+                userInfo = data.userInfo || null;
+                
+                saveCredentials(server, username, password);
+                addToHistory(server, username, password);
+                savePlaylist();
+                displayChannels();
+                displayUserInfo();
+                showToast(`Loaded ${currentChannels.length} ${type} items`, 'success');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function fetchAll() {
+            const server = document.getElementById('serverUrl').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!server || !username || !password) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML += '<span class="spinner"></span>';
+
+            try {
+                const types = ['live', 'vod', 'series'];
+                const allStreams = [];
+                let fetchedUserInfo = null;
+
+                for (const type of types) {
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ server, username, password, type })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.streams) {
+                        const streams = data.streams.map(s => ({ ...s, streamType: type }));
+                        allStreams.push(...streams);
+                        
+                        if (data.userInfo && !fetchedUserInfo) {
+                            fetchedUserInfo = data.userInfo;
+                        }
+                    }
+                }
+
+                currentChannels = allStreams;
+                currentType = 'all';
+                userInfo = fetchedUserInfo;
+                
+                saveCredentials(server, username, password);
+                addToHistory(server, username, password);
+                savePlaylist();
+                displayChannels();
+                displayUserInfo();
+                showToast(`Loaded ${currentChannels.length} total items`, 'success');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        // ========================================
+        // Display & Render Functions
+        // ========================================
+        function displayChannels() {
+            filteredChannels = [...currentChannels];
+            renderChannels();
+            updateStats();
+            populateCategories();
+            updateExportInfo();
+            
+            document.getElementById('statsContainer').style.display = 'grid';
+            document.getElementById('controlsCard').style.display = 'block';
+            document.getElementById('channelListCard').style.display = 'block';
+        }
+
+        function renderChannels() {
+            const container = document.getElementById('channelList');
+            
+            if (filteredChannels.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <h3>No channels found</h3>
+                        <p>Try adjusting your filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredChannels.map((channel, index) => `
+                <div class="channel-item">
+                    <span class="type-badge ${channel.streamType}">${channel.streamType}</span>
+                    <div class="channel-logo-wrap">
+                        ${channel.stream_icon 
+                            ? `<img class="channel-logo" src="${channel.stream_icon}" alt="${channel.name}" onerror="this.parentElement.innerHTML='<svg class=\\'channel-logo-placeholder\\' viewBox=\\'0 0 24 24\\' fill=\\'currentColor\\'><path d=\\'M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z\\'/></svg>'" />`
+                            : `<svg class="channel-logo-placeholder" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z"/></svg>`
+                        }
+                    </div>
+                    <div class="channel-info">
+                        <div class="channel-name">${channel.name}</div>
+                        <div class="channel-category">${channel.category_name || 'Uncategorized'}</div>
+                    </div>
+                    <div class="channel-actions">
+                        <button class="action-play" onclick="playChannel(${index})">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            Play
+                        </button>
+                        <button class="action-edit" onclick="editChannel(${index})">
+                            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>
+                        </button>
+                        <button class="action-delete" onclick="deleteChannel(${index})">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalChannels').textContent = currentChannels.length;
+            document.getElementById('filteredChannels').textContent = filteredChannels.length;
+            
+            const categories = new Set(currentChannels.map(c => c.category_name).filter(Boolean));
+            document.getElementById('totalCategories').textContent = categories.size;
+        }
+
+        function updateExportInfo() {
+            const infoText = document.getElementById('exportInfoText');
+            const searchTerm = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            
+            let exportDescription = '';
+            
+            if (!searchTerm && !category && !type) {
+                exportDescription = `Export will include all <strong>${filteredChannels.length}</strong> items`;
+            } else {
+                let filters = [];
+                if (category) filters.push(`"${category}"`);
+                if (type) filters.push(type.toUpperCase());
+                if (searchTerm) filters.push(`matching "${searchTerm}"`);
+                
+                exportDescription = `Export will include <strong>${filteredChannels.length}</strong> filtered items (${filters.join(', ')})`;
+            }
+            
+            infoText.innerHTML = exportDescription;
+        }
+
+        function populateCategories() {
+            const select = document.getElementById('categoryFilter');
+            const categories = [...new Set(currentChannels.map(c => c.category_name).filter(Boolean))].sort();
+            
+            select.innerHTML = '<option value="">All Categories</option>' +
+                categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
+
+        function filterChannels() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const type = document.getElementById('typeFilter').value;
+
+            filteredChannels = currentChannels.filter(channel => {
+                const matchesSearch = channel.name.toLowerCase().includes(searchTerm);
+                const matchesCategory = !category || channel.category_name === category;
+                const matchesType = !type || channel.streamType === type;
+                return matchesSearch && matchesCategory && matchesType;
+            });
+
+            renderChannels();
+            document.getElementById('filteredChannels').textContent = filteredChannels.length;
+            updateExportInfo();
+        }
+
+        function setView(mode) {
+            const list = document.getElementById('channelList');
+            const buttons = document.querySelectorAll('.view-toggle button');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.closest('button').classList.add('active');
+            
+            list.className = `channel-list ${mode}-view`;
+        }
+
+        // ========================================
+        // Stream URL Generation
+        // ========================================
+        function getStreamUrl(channel) {
+            const server = document.getElementById('serverUrl').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            const type = channel.streamType || currentType;
+            const extension = type === 'live' ? '.ts' : '.mp4';
+
+            let streamUrl = '';
+            if (type === 'live') {
+                streamUrl = `${server}/live/${username}/${password}/${channel.stream_id}${extension}`;
+            } else if (type === 'vod') {
+                streamUrl = `${server}/movie/${username}/${password}/${channel.stream_id}${extension}`;
+            } else if (type === 'series') {
+                streamUrl = `${server}/series/${username}/${password}/${channel.stream_id}${extension}`;
+            }
+
+            return streamUrl;
+        }
+
+        // ========================================
+        // Player Functions
+        // ========================================
+        function playChannel(index) {
+            const channel = filteredChannels[index];
+            const streamUrl = getStreamUrl(channel);
+
+            currentPlayUrl = streamUrl;
+            document.getElementById('playerTitleText').textContent = channel.name;
+            
+            const playerContainer = document.getElementById('videoPlayer');
+            const videoId = 'videoElement';
+            playerContainer.innerHTML = `<video id="${videoId}" controls autoplay playsinline></video>`;
+            
+            const video = document.getElementById(videoId);
+            
+            if (streamUrl.includes('.m3u8') && Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+            } else {
+                video.src = streamUrl;
+            }
+            
+            openModal('playerModal');
+        }
+
+        function openInExternalPlayer() {
+            if (currentPlayUrl) {
+                const intent = `intent:${currentPlayUrl}#Intent;type=video/*;scheme=http;end`;
+                window.location.href = intent;
+            }
+        }
+
+        function copyCurrentStreamUrl() {
+            if (currentPlayUrl) {
+                navigator.clipboard.writeText(currentPlayUrl).then(() => {
+                    showToast('Stream URL copied', 'success');
+                });
+            }
+        }
+
+        // ========================================
+        // Edit Functions
+        // ========================================
+        function editChannel(index) {
+            currentEditIndex = index;
+            const channel = filteredChannels[index];
+            const streamUrl = getStreamUrl(channel);
+            
+            document.getElementById('editName').value = channel.name;
+            document.getElementById('editGroup').value = channel.category_name || '';
+            document.getElementById('editLogo').value = channel.stream_icon || '';
+            document.getElementById('editStreamUrl').value = streamUrl;
+            
+            openModal('editModal');
+        }
+
+        function saveEdit() {
+            if (currentEditIndex === null) return;
+            
+            const channel = filteredChannels[currentEditIndex];
+            channel.name = document.getElementById('editName').value;
+            channel.category_name = document.getElementById('editGroup').value;
+            channel.stream_icon = document.getElementById('editLogo').value;
+            
+            const mainIndex = currentChannels.findIndex(c => c.stream_id === channel.stream_id && c.streamType === channel.streamType);
+            if (mainIndex !== -1) {
+                currentChannels[mainIndex] = channel;
+            }
+            
+            savePlaylist();
+            renderChannels();
+            populateCategories();
+            closeModal('editModal');
+            showToast('Channel updated', 'success');
+        }
+
+        function copyStreamUrl() {
+            const input = document.getElementById('editStreamUrl');
+            const btn = input.nextElementSibling;
+            
+            navigator.clipboard.writeText(input.value).then(() => {
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+                
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                }, 2000);
+                
+                showToast('URL copied', 'success');
+            });
+        }
+
+        function deleteChannel(index) {
+            if (confirm('Delete this channel?')) {
+                const channel = filteredChannels[index];
+                currentChannels = currentChannels.filter(c => !(c.stream_id === channel.stream_id && c.streamType === channel.streamType));
+                savePlaylist();
+                filterChannels();
+                updateStats();
+                showToast('Channel deleted', 'success');
+            }
+        }
+
+        // ========================================
+        // Export Functions (Now exports filtered items)
+        // ========================================
+        function exportM3U() {
+            if (filteredChannels.length === 0) {
+                showToast('No channels to export', 'warning');
+                return;
+            }
+
+            const m3u = generateM3UContent(filteredChannels);
+
+            navigator.clipboard.writeText(m3u).then(() => {
+                showToast(`Copied ${filteredChannels.length} channels to clipboard`, 'success');
+            });
+        }
+
+        function downloadPlaylist() {
+            if (filteredChannels.length === 0) {
+                showToast('No channels to download', 'warning');
+                return;
+            }
+
+            const m3u = generateM3UContent(filteredChannels);
+            const blob = new Blob([m3u], { type: 'audio/x-mpegurl' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Generate filename based on filter
+            const category = document.getElementById('categoryFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            let filename = 'playlist';
+            if (category) filename += `_${category.replace(/[^a-z0-9]/gi, '_')}`;
+            if (type) filename += `_${type}`;
+            filename += `_${Date.now()}.m3u`;
+            
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast(`Downloaded ${filteredChannels.length} channels`, 'success');
+        }
+
+        function generateM3UContent(channels) {
+            let m3u = '#EXTM3U\n';
+
+            channels.forEach(channel => {
+                const streamUrl = getStreamUrl(channel);
+                m3u += `#EXTINF:-1 tvg-logo="${channel.stream_icon || ''}" group-title="${channel.category_name || 'Uncategorized'}",${channel.name}\n`;
+                m3u += `${streamUrl}\n`;
+            });
+
+            return m3u;
+        }
+
+        // ========================================
+        // Clear Data
+        // ========================================
+        function clearData() {
+            if (confirm('Clear all playlist data?')) {
+                localStorage.removeItem('xtream_playlist');
+                localStorage.removeItem('xtream_creds');
+                currentChannels = [];
+                filteredChannels = [];
+                userInfo = null;
+                
+                document.getElementById('statsContainer').style.display = 'none';
+                document.getElementById('controlsCard').style.display = 'none';
+                document.getElementById('channelListCard').style.display = 'none';
+                document.getElementById('userInfoCard').style.display = 'none';
+                
+                document.getElementById('serverUrl').value = '';
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                
+                showToast('All data cleared', 'success');
+            }
+        }
+
+        // ========================================
+        // Modal Functions
+        // ========================================
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.body.style.overflow = '';
+            
+            if (id === 'playerModal') {
+                document.getElementById('videoPlayer').innerHTML = '';
+            }
+        }
+
+        function openSettings() {
+            openModal('settingsModal');
+        }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(modal.id);
+                }
+            });
+        });
+
+        // ========================================
+        // Toast Notification
+        // ========================================
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = toast.querySelector('.toast-icon');
+            
+            toastMessage.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            const icons = {
+                success: '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
+                error: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>',
+                warning: '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+            };
+            
+            toastIcon.innerHTML = icons[type] || icons.success;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

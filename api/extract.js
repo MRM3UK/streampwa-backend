@@ -2,22 +2,20 @@
  * Xtream Codes API Extractor
  * Serverless function for Vercel
  * 
- * This function acts as a proxy to fetch data from Xtream Codes API
- * and returns clean, formatted JSON to the frontend.
+ * Acts as a secure proxy to fetch data from Xtream Codes API
+ * Returns clean, formatted JSON to the frontend.
  */
 
-// Enable CORS for all origins
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
-};
-
 export default async function handler(req, res) {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Content-Type', 'application/json');
+
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
-        return res.status(200).json({});
+        return res.status(200).end();
     }
 
     // Only allow POST requests
@@ -48,89 +46,104 @@ export default async function handler(req, res) {
             });
         }
 
-        // Clean server URL (remove trailing slash)
+        // Clean server URL
         const cleanServer = server.replace(/\/+$/, '');
 
-        // Build API URL
-        const apiUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-
-        // Fetch data from Xtream API
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0',
-            },
-            // Set timeout to 30 seconds
-            signal: AbortSignal.timeout(30000)
-        });
-
-        if (!response.ok) {
-            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        // Validate URL format
+        try {
+            new URL(cleanServer);
+        } catch {
+            return res.status(400).json({
+                error: 'Invalid server URL',
+                message: 'Please provide a valid server URL'
+            });
         }
 
-        const data = await response.json();
+        // Build API URLs
+        const baseParams = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+        
+        // Action mappings
+        const actionMap = {
+            live: { categories: 'get_live_categories', streams: 'get_live_streams' },
+            vod: { categories: 'get_vod_categories', streams: 'get_vod_streams' },
+            series: { categories: 'get_series_categories', streams: 'get_series' }
+        };
 
-        // Check if authentication was successful
-        if (data.user_info && data.user_info.auth === 0) {
+        const actions = actionMap[type];
+
+        // Fetch options
+        const fetchOptions = {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json'
+            }
+        };
+
+        // Fetch categories
+        const categoryUrl = `${cleanServer}/player_api.php?${baseParams}&action=${actions.categories}`;
+        let categories = [];
+        
+        try {
+            const catResponse = await fetch(categoryUrl, fetchOptions);
+            if (catResponse.ok) {
+                const catData = await catResponse.json();
+                if (Array.isArray(catData)) {
+                    categories = catData;
+                }
+            }
+        } catch (e) {
+            // Categories are optional, continue without them
+        }
+
+        // Create category map
+        const categoryMap = {};
+        categories.forEach(cat => {
+            categoryMap[cat.category_id] = cat.category_name;
+        });
+
+        // Fetch streams
+        const streamsUrl = `${cleanServer}/player_api.php?${baseParams}&action=${actions.streams}`;
+        const streamsResponse = await fetch(streamsUrl, fetchOptions);
+
+        if (!streamsResponse.ok) {
+            // Try to get error details
+            let errorMessage = `Server returned ${streamsResponse.status}`;
+            try {
+                const errorData = await streamsResponse.json();
+                if (errorData.user_info && errorData.user_info.auth === 0) {
+                    errorMessage = 'Invalid username or password';
+                }
+            } catch {
+                // Ignore parse errors
+            }
+            
+            return res.status(streamsResponse.status === 401 ? 401 : 502).json({
+                error: 'Authentication failed',
+                message: errorMessage
+            });
+        }
+
+        const streamsData = await streamsResponse.json();
+
+        // Check for auth failure in response
+        if (streamsData && streamsData.user_info && streamsData.user_info.auth === 0) {
             return res.status(401).json({
                 error: 'Authentication failed',
                 message: 'Invalid username or password'
             });
         }
 
-        // Fetch categories for the specific type
-        let categoryUrl = '';
-        if (type === 'live') {
-            categoryUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_categories`;
-        } else if (type === 'vod') {
-            categoryUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_categories`;
-        } else if (type === 'series') {
-            categoryUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series_categories`;
-        }
-
-        const categoriesResponse = await fetch(categoryUrl, {
-            signal: AbortSignal.timeout(30000)
-        });
-        const categories = categoriesResponse.ok ? await categoriesResponse.json() : [];
-
-        // Create category map for faster lookups
-        const categoryMap = {};
-        if (Array.isArray(categories)) {
-            categories.forEach(cat => {
-                categoryMap[cat.category_id] = cat.category_name;
-            });
-        }
-
-        // Fetch streams for the specific type
-        let streamsUrl = '';
-        if (type === 'live') {
-            streamsUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`;
-        } else if (type === 'vod') {
-            streamsUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`;
-        } else if (type === 'series') {
-            streamsUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`;
-        }
-
-        const streamsResponse = await fetch(streamsUrl, {
-            signal: AbortSignal.timeout(30000)
-        });
-
-        if (!streamsResponse.ok) {
-            throw new Error('Failed to fetch streams');
-        }
-
-        const streams = await streamsResponse.json();
-
-        if (!Array.isArray(streams)) {
+        // Validate streams data
+        if (!Array.isArray(streamsData)) {
             return res.status(500).json({
                 error: 'Invalid response',
-                message: 'API did not return valid stream data'
+                message: 'Server did not return valid stream data'
             });
         }
 
-        // Process and clean stream data
-        const processedStreams = streams.map(stream => {
-            // Map category ID to category name
+        // Process streams
+        const processedStreams = streamsData.map(stream => {
             const categoryName = categoryMap[stream.category_id] || 
                                 stream.category_name || 
                                 'Uncategorized';
@@ -141,7 +154,6 @@ export default async function handler(req, res) {
                 stream_icon: stream.stream_icon || stream.cover || '',
                 category_id: stream.category_id || '',
                 category_name: categoryName,
-                // Additional metadata for VOD/Series
                 rating: stream.rating || '',
                 added: stream.added || '',
                 year: stream.year || stream.releaseDate || '',
@@ -149,52 +161,55 @@ export default async function handler(req, res) {
             };
         });
 
-        // Return clean data
+        // Return success response
         return res.status(200).json({
             success: true,
             type: type,
             count: processedStreams.length,
             streams: processedStreams,
-            // Include user info (without sensitive data)
-            userInfo: data.user_info ? {
-                username: data.user_info.username,
-                status: data.user_info.status,
-                exp_date: data.user_info.exp_date,
-                active_cons: data.user_info.active_cons,
-                max_connections: data.user_info.max_connections
-            } : null
+            categories: categories.length
         });
 
     } catch (error) {
+        // Log error server-side only (no credentials)
         console.error('API Error:', error.message);
 
-        // Handle different error types
-        if (error.name === 'AbortError') {
+        // Handle specific error types
+        if (error.name === 'AbortError' || error.message.includes('timeout')) {
             return res.status(504).json({
                 error: 'Request timeout',
                 message: 'The server took too long to respond'
             });
         }
 
-        if (error.message.includes('fetch')) {
+        if (error.message.includes('fetch') || error.message.includes('ECONNREFUSED')) {
             return res.status(502).json({
                 error: 'Connection failed',
-                message: 'Could not connect to the Xtream server. Please check the server URL.'
+                message: 'Could not connect to the server. Please check the URL.'
+            });
+        }
+
+        if (error.message.includes('JSON')) {
+            return res.status(502).json({
+                error: 'Invalid response',
+                message: 'Server returned invalid data'
             });
         }
 
         return res.status(500).json({
             error: 'Internal server error',
-            message: error.message
+            message: 'An unexpected error occurred'
         });
     }
 }
 
-// Export config for Vercel
+// Vercel config
 export const config = {
     api: {
         bodyParser: {
             sizeLimit: '1mb',
         },
+        // Increase timeout for slow servers
+        maxDuration: 30,
     },
 };

@@ -2218,6 +2218,167 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
+        // Add this to the <script> section of index.html
+
+async function fetchGofileContentDirect() {
+    const input = document.getElementById('gofileInput').value.trim();
+    const recursive = document.getElementById('recursiveCheck').checked;
+
+    if (!input) {
+        showToast('Please enter a Gofile link', 'warning');
+        return;
+    }
+
+    const contentId = extractContentId(input);
+    if (!contentId) {
+        showToast('Invalid Gofile link format', 'error');
+        return;
+    }
+
+    const grid = document.getElementById('filesGrid');
+    const fetchBtn = document.getElementById('fetchBtn');
+    
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '⏳ Loading...';
+    
+    grid.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <span>Fetching content from Gofile (Direct Mode)...</span>
+        </div>
+    `;
+
+    try {
+        // Step 1: Create guest account
+        const accountRes = await fetch('https://api.gofile.io/accounts', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        const accountData = await accountRes.json();
+        
+        if (accountData.status !== 'ok' || !accountData.data?.token) {
+            throw new Error('Failed to create guest account');
+        }
+
+        const token = accountData.data.token;
+        console.log('Token:', token);
+
+        // Step 2: Fetch content
+        const contentRes = await fetch(
+            `https://api.gofile.io/getContent?contentId=${contentId}&token=${token}&wt=4fd6sg89d7s6`,
+            {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        const contentData = await contentRes.json();
+        console.log('Content:', contentData);
+
+        if (contentData.status !== 'ok') {
+            throw new Error(contentData.message || 'Failed to fetch content');
+        }
+
+        // Step 3: Process the data
+        state.files = [];
+        const folders = [];
+
+        processContentData(contentData.data, state.files, folders);
+
+        updateStats({ 
+            totalFiles: state.files.length, 
+            totalFolders: folders.length,
+            files: state.files 
+        });
+
+        renderFiles();
+        showToast(`Loaded ${state.files.length} files`, 'success');
+
+    } catch (error) {
+        console.error('Error:', error);
+        grid.innerHTML = `
+            <div class="error-state">
+                <div class="icon">❌</div>
+                <h3>Error loading content</h3>
+                <p>${escapeHtml(error.message)}</p>
+                <code>Content ID: ${contentId}</code>
+            </div>
+        `;
+        showToast(error.message, 'error');
+    } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.innerHTML = '🔍 Fetch';
+    }
+}
+
+function processContentData(content, files, folders) {
+    if (content.type === 'folder') {
+        folders.push({
+            id: content.id,
+            name: content.name,
+            type: 'folder'
+        });
+
+        if (content.children) {
+            for (const childId in content.children) {
+                const child = content.children[childId];
+                
+                if (child.type === 'file') {
+                    files.push(createFileFromData(child, content.name));
+                } else if (child.type === 'folder') {
+                    folders.push({
+                        id: child.id,
+                        name: child.name,
+                        type: 'folder'
+                    });
+                }
+            }
+        }
+    } else if (content.type === 'file') {
+        files.push(createFileFromData(content, ''));
+    }
+}
+
+function createFileFromData(file, folderName) {
+    const name = file.name || '';
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    
+    const videoExts = ['mp4', 'mkv', 'avi', 'webm', 'mov', 'wmv', 'flv', 'm4v', 'mpeg', 'mpg', '3gp', 'ts'];
+    const audioExts = ['mp3', 'flac', 'wav', 'ogg', 'm4a', 'aac', 'wma', 'opus'];
+    
+    let mediaType = 'other';
+    if (videoExts.includes(ext)) mediaType = 'video';
+    else if (audioExts.includes(ext)) mediaType = 'audio';
+    else if (ext === 'm3u8') mediaType = 'hls';
+    else if (ext === 'mpd') mediaType = 'dash';
+
+    return {
+        id: file.id || Math.random().toString(36).substr(2, 9),
+        name: name,
+        size: file.size || 0,
+        sizeFormatted: formatFileSize(file.size || 0),
+        createTime: file.createTime || 0,
+        createTimeFormatted: formatDate(file.createTime),
+        link: file.link || '',
+        directLink: file.link || '',
+        extension: ext,
+        mediaType: mediaType,
+        isPlayable: ['video', 'audio', 'hls', 'dash'].includes(mediaType),
+        thumbnail: file.thumbnail || null,
+        folderName: folderName,
+        mimetype: file.mimetype || ''
+    };
+}
+
+// Update the fetchGofileContent function to use direct mode
+function fetchGofileContent() {
+    // Try direct browser mode first (often works better)
+    fetchGofileContentDirect();
+}
     </script>
 </body>
 </html>

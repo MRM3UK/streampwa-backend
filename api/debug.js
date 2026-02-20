@@ -1,167 +1,293 @@
-// /api/debug.js - Enhanced debug endpoint
+// /api/debug.js - Complete API Tester
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
 
     const { id } = req.query;
-    const logs = [];
+    const results = {
+        contentId: id,
+        steps: [],
+        success: false
+    };
 
-    const log = (msg, data = null) => {
-        const entry = { time: new Date().toISOString(), message: msg };
-        if (data) entry.data = data;
-        logs.push(entry);
-        console.log(msg, data || '');
+    const addStep = (name, data) => {
+        results.steps.push({ step: name, ...data });
+        console.log(`[${name}]`, JSON.stringify(data).substring(0, 300));
     };
 
     try {
-        log('Starting enhanced debug for content ID:', id);
+        // ==========================================
+        // STEP 1: Create Guest Account
+        // ==========================================
+        addStep('1_create_account', { status: 'starting' });
+        
+        const accountResponse = await fetch('https://api.gofile.io/accounts', {
+            method: 'POST',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Origin': 'https://gofile.io',
+                'Referer': 'https://gofile.io/'
+            }
+        });
 
-        // Test 1: Create guest account
-        log('Step 1: Creating guest account...');
-        let accountToken = null;
+        const accountText = await accountResponse.text();
+        let accountData;
         
         try {
-            const accountRes = await fetch('https://api.gofile.io/accounts', {
-                method: 'POST',
+            accountData = JSON.parse(accountText);
+        } catch (e) {
+            addStep('1_create_account', { 
+                status: 'error', 
+                error: 'Invalid JSON', 
+                raw: accountText.substring(0, 200) 
+            });
+            throw new Error('Invalid account response');
+        }
+
+        addStep('1_create_account', { 
+            status: accountData.status,
+            hasToken: !!accountData.data?.token,
+            response: accountData
+        });
+
+        if (accountData.status !== 'ok' || !accountData.data?.token) {
+            throw new Error('Failed to create guest account');
+        }
+
+        const accountToken = accountData.data.token;
+
+        // ==========================================
+        // STEP 2: Try to get website token from JS
+        // ==========================================
+        addStep('2_website_token', { status: 'starting' });
+        
+        let websiteToken = null;
+        
+        try {
+            const jsResponse = await fetch('https://gofile.io/dist/js/alljs.js', {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                    'Origin': 'https://gofile.io',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                     'Referer': 'https://gofile.io/'
                 }
             });
-            
-            const accountText = await accountRes.text();
-            log('Guest account response:', accountText);
-            
-            const accountData = JSON.parse(accountText);
-            
-            if (accountData.status === 'ok' && accountData.data?.token) {
-                accountToken = accountData.data.token;
-                log('✅ Account token obtained successfully:', accountToken);
+
+            if (jsResponse.ok) {
+                const jsText = await jsResponse.text();
+                
+                // Try multiple patterns
+                const patterns = [
+                    /fetchData\.wt\s*=\s*["']([^"']+)["']/,
+                    /wt\s*[:=]\s*["']([^"']+)["']/,
+                    /websiteToken\s*[:=]\s*["']([^"']+)["']/,
+                    /["']wt["']\s*:\s*["']([^"']+)["']/
+                ];
+
+                for (const pattern of patterns) {
+                    const match = jsText.match(pattern);
+                    if (match && match[1]) {
+                        websiteToken = match[1];
+                        break;
+                    }
+                }
+                
+                addStep('2_website_token', { 
+                    status: 'ok', 
+                    found: !!websiteToken,
+                    token: websiteToken 
+                });
             } else {
-                log('❌ Failed to get account token');
+                addStep('2_website_token', { 
+                    status: 'failed', 
+                    httpStatus: jsResponse.status 
+                });
             }
         } catch (e) {
-            log('❌ Error creating guest account:', e.message);
-        }
-
-        if (!accountToken) {
-            return res.status(500).json({
-                status: 'error',
-                message: 'Failed to create guest account',
-                logs: logs
+            addStep('2_website_token', { 
+                status: 'error', 
+                error: e.message 
             });
         }
 
-        // Test 2: Get content info
+        // Use fallback if not found
+        if (!websiteToken) {
+            websiteToken = '4fd6sg89d7s6';
+            addStep('2_website_token_fallback', { 
+                using: websiteToken 
+            });
+        }
+
+        // ==========================================
+        // STEP 3: Test content endpoint WITHOUT wt
+        // ==========================================
         if (id) {
-            log('Step 2: Getting content info...');
+            addStep('3_content_no_wt', { status: 'starting', url: `https://api.gofile.io/contents/${id}` });
             
             try {
-                const contentRes = await fetch(`https://api.gofile.io/contents/${id}`, {
+                const contentRes1 = await fetch(`https://api.gofile.io/contents/${id}`, {
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${accountToken}`,
+                        'Origin': 'https://gofile.io',
+                        'Referer': 'https://gofile.io/'
+                    }
+                });
+
+                const contentText1 = await contentRes1.text();
+                let contentData1;
+                
+                try {
+                    contentData1 = JSON.parse(contentText1);
+                } catch (e) {
+                    contentData1 = { raw: contentText1.substring(0, 300) };
+                }
+
+                addStep('3_content_no_wt', { 
+                    httpStatus: contentRes1.status,
+                    response: contentData1
+                });
+            } catch (e) {
+                addStep('3_content_no_wt', { 
+                    status: 'error', 
+                    error: e.message 
+                });
+            }
+
+            // ==========================================
+            // STEP 4: Test content endpoint WITH wt
+            // ==========================================
+            addStep('4_content_with_wt', { status: 'starting', url: `https://api.gofile.io/contents/${id}?wt=${websiteToken}` });
+            
+            try {
+                const contentRes2 = await fetch(`https://api.gofile.io/contents/${id}?wt=${websiteToken}`, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${accountToken}`,
+                        'Origin': 'https://gofile.io',
+                        'Referer': 'https://gofile.io/',
                         'Cookie': `accountToken=${accountToken}`
                     }
                 });
+
+                const contentText2 = await contentRes2.text();
+                let contentData2;
                 
-                const contentText = await contentRes.text();
-                log('Content info response status:', contentRes.status);
-                log('Content info response:', contentText.substring(0, 500));
-                
-                const contentData = JSON.parse(contentText);
-                
-                if (contentData.status === 'ok' && contentData.data) {
-                    log('✅ Content info obtained successfully');
-                    log('Content type:', contentData.data.type);
-                    log('Content name:', contentData.data.name);
+                try {
+                    contentData2 = JSON.parse(contentText2);
+                } catch (e) {
+                    contentData2 = { raw: contentText2.substring(0, 500) };
+                }
+
+                addStep('4_content_with_wt', { 
+                    httpStatus: contentRes2.status,
+                    response: contentData2
+                });
+
+                // If successful, try to get direct links
+                if (contentData2.status === 'ok') {
+                    results.contentInfo = contentData2.data;
                     
-                    // Test 3: Get direct links (if it's a folder)
-                    if (contentData.data.type === 'folder') {
-                        log('Step 3: Getting direct links for folder...');
+                    // ==========================================
+                    // STEP 5: Test direct links endpoint
+                    // ==========================================
+                    addStep('5_direct_links', { status: 'starting' });
+                    
+                    try {
+                        const directRes = await fetch(`https://api.gofile.io/contents/${id}/directlinks`, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${accountToken}`,
+                                'Origin': 'https://gofile.io',
+                                'Referer': 'https://gofile.io/',
+                                'Cookie': `accountToken=${accountToken}`
+                            }
+                        });
+
+                        const directText = await directRes.text();
+                        let directData;
                         
                         try {
-                            const directRes = await fetch(`https://api.gofile.io/contents/${id}/directlinks`, {
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                    'Accept': 'application/json',
-                                    'Authorization': `Bearer ${accountToken}`,
-                                    'Cookie': `accountToken=${accountToken}`
-                                }
-                            });
-                            
-                            const directText = await directRes.text();
-                            log('Direct links response status:', directRes.status);
-                            log('Direct links response:', directText.substring(0, 500));
-                            
-                            const directData = JSON.parse(directText);
-                            
-                            if (directData.status === 'ok' && directData.data) {
-                                log('✅ Direct links obtained successfully');
-                                if (directData.data.contents) {
-                                    const contentCount = Object.keys(directData.data.contents).length;
-                                    log('Number of items with direct links:', contentCount);
-                                }
-                            } else {
-                                log('❌ Failed to get direct links:', directData.message || 'Unknown error');
-                            }
+                            directData = JSON.parse(directText);
                         } catch (e) {
-                            log('❌ Error getting direct links:', e.message);
+                            directData = { raw: directText.substring(0, 500) };
                         }
-                    }
-                    // Test 3b: Get direct link (if it's a file)
-                    else if (contentData.data.type === 'file') {
-                        log('Step 3: Getting direct link for file...');
-                        
-                        try {
-                            const directRes = await fetch(`https://api.gofile.io/contents/${id}/directlinks`, {
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                    'Accept': 'application/json',
-                                    'Authorization': `Bearer ${accountToken}`,
-                                    'Cookie': `accountToken=${accountToken}`
-                                }
-                            });
-                            
-                            const directText = await directRes.text();
-                            log('Direct link response status:', directRes.status);
-                            log('Direct link response:', directText.substring(0, 500));
-                            
-                            const directData = JSON.parse(directText);
-                            
-                            if (directData.status === 'ok' && directData.data?.directLink) {
-                                log('✅ Direct link obtained successfully');
-                                log('Direct link URL:', directData.data.directLink);
-                            } else {
-                                log('❌ Failed to get direct link:', directData.message || 'Unknown error');
-                            }
-                        } catch (e) {
-                            log('❌ Error getting direct link:', e.message);
+
+                        addStep('5_direct_links', { 
+                            httpStatus: directRes.status,
+                            response: directData
+                        });
+
+                        if (directData.status === 'ok') {
+                            results.directLinks = directData.data;
+                            results.success = true;
                         }
+                    } catch (e) {
+                        addStep('5_direct_links', { 
+                            status: 'error', 
+                            error: e.message 
+                        });
                     }
-                } else {
-                    log('❌ Failed to get content info:', contentData.message || 'Unknown error');
                 }
             } catch (e) {
-                log('❌ Error getting content info:', e.message);
+                addStep('4_content_with_wt', { 
+                    status: 'error', 
+                    error: e.message 
+                });
+            }
+
+            // ==========================================
+            // STEP 6: Alternative - Try getContent endpoint
+            // ==========================================
+            addStep('6_get_content', { status: 'starting', url: `https://api.gofile.io/getContent?contentId=${id}&token=${accountToken}&wt=${websiteToken}` });
+            
+            try {
+                const getContentRes = await fetch(`https://api.gofile.io/getContent?contentId=${id}&token=${accountToken}&wt=${websiteToken}`, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                        'Accept': 'application/json',
+                        'Origin': 'https://gofile.io',
+                        'Referer': 'https://gofile.io/'
+                    }
+                });
+
+                const getContentText = await getContentRes.text();
+                let getContentData;
+                
+                try {
+                    getContentData = JSON.parse(getContentText);
+                } catch (e) {
+                    getContentData = { raw: getContentText.substring(0, 500) };
+                }
+
+                addStep('6_get_content', { 
+                    httpStatus: getContentRes.status,
+                    response: getContentData
+                });
+
+                if (getContentData.status === 'ok' && !results.success) {
+                    results.contentInfo = getContentData.data;
+                    results.success = true;
+                }
+            } catch (e) {
+                addStep('6_get_content', { 
+                    status: 'error', 
+                    error: e.message 
+                });
             }
         }
 
-        return res.status(200).json({
-            status: 'debug_complete',
-            logs: logs
-        });
+        results.accountToken = accountToken;
+        results.websiteToken = websiteToken;
+
+        return res.status(200).json(results);
 
     } catch (error) {
-        log('Fatal error:', error.message);
-        return res.status(500).json({
-            status: 'error',
-            error: error.message,
-            logs: logs
-        });
+        results.error = error.message;
+        return res.status(500).json(results);
     }
 }

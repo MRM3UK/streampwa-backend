@@ -1,4 +1,4 @@
-// /api/gofile.js - FIXED VERSION
+// /api/gofile.js - WORKING VERSION WITH CORRECT ENDPOINTS
 
 export default async function handler(req, res) {
     // CORS Headers
@@ -24,38 +24,40 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Step 1: Get website token from Gofile
-        const websiteToken = await getWebsiteToken();
-        console.log('Website Token:', websiteToken);
+        console.log('=== Gofile Fetch Started ===');
+        console.log('Content ID:', id);
 
-        // Step 2: Create guest account if no token provided
+        // Step 1: Create/Get guest account token
         let accountToken = token;
         if (!accountToken) {
+            console.log('Creating guest account...');
             accountToken = await createGuestAccount();
-            console.log('Account Token:', accountToken);
         }
 
         if (!accountToken) {
-            throw new Error('Failed to create guest account');
+            throw new Error('Failed to create Gofile account. Please try again.');
         }
 
-        // Step 3: Fetch content
+        console.log('Account token obtained');
+
+        // Step 2: Fetch content with token
         const allFiles = [];
         const folders = [];
         
-        await fetchGofileContent(
-            id, 
-            accountToken, 
-            websiteToken, 
+        await fetchGofileContent({
+            contentId: id,
+            accountToken,
             password,
-            allFiles, 
-            folders, 
-            recursive === 'true', 
-            0
-        );
+            files: allFiles,
+            folders,
+            recursive: recursive === 'true',
+            depth: 0
+        });
 
-        // Sort files by name
+        // Sort files
         allFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+        console.log(`=== Complete: ${allFiles.length} files, ${folders.length} folders ===`);
 
         return res.status(200).json({
             status: 'ok',
@@ -65,197 +67,187 @@ export default async function handler(req, res) {
                 totalFolders: folders.length,
                 files: allFiles,
                 folders: folders,
-                accountToken: accountToken // Return for subsequent requests
+                accountToken: accountToken
             }
         });
 
     } catch (error) {
-        console.error('Gofile API Error:', error);
+        console.error('=== Error ===');
+        console.error(error.message);
+        
         return res.status(500).json({ 
             status: 'error', 
-            message: error.message || 'Failed to fetch content from Gofile',
-            details: error.stack
+            message: error.message || 'Failed to fetch content from Gofile'
         });
     }
 }
 
-// Get website token from Gofile's main page
-async function getWebsiteToken() {
-    try {
-        // Method 1: Try to fetch from Gofile's JS
-        const response = await fetch('https://gofile.io/dist/js/alljs.js', {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Referer': 'https://gofile.io/'
-            }
-        });
-        
-        if (response.ok) {
-            const text = await response.text();
-            // Look for websiteToken in the JS
-            const match = text.match(/(?:websiteToken|wt)\s*[=:]\s*["']([a-zA-Z0-9]+)["']/);
-            if (match && match[1]) {
-                return match[1];
-            }
-        }
-    } catch (e) {
-        console.log('Failed to get token from JS:', e.message);
-    }
-
-    // Method 2: Try known working tokens (these change periodically)
-    const knownTokens = [
-        '4fd6sg89d7s6',
-        'aB9cD3fG2hI1',
-    ];
-    
-    // Method 3: Return a default (may need updating)
-    return knownTokens[0];
-}
-
-// Create a guest account
+// Create guest account
 async function createGuestAccount() {
     try {
         const response = await fetch('https://api.gofile.io/accounts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'Origin': 'https://gofile.io',
-                'Referer': 'https://gofile.io/'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             }
         });
 
         const data = await response.json();
-        console.log('Guest account response:', JSON.stringify(data));
-
+        
         if (data.status === 'ok' && data.data?.token) {
             return data.data.token;
         }
         
+        console.error('Account creation failed:', data);
         return null;
     } catch (error) {
-        console.error('Failed to create guest account:', error);
+        console.error('Account creation error:', error);
         return null;
     }
 }
 
 // Fetch content from Gofile
-async function fetchGofileContent(contentId, accountToken, websiteToken, password, files, folders, recursive, depth) {
+async function fetchGofileContent(options) {
+    const { contentId, accountToken, password, files, folders, recursive, depth } = options;
+
     if (depth > 10) {
         console.log('Max recursion depth reached');
         return;
     }
 
-    // Build API URL
-    let apiUrl = `https://api.gofile.io/contents/${contentId}?wt=${websiteToken}`;
-    if (password) {
-        // Hash password if provided
-        const hashHex = await sha256(password);
-        apiUrl += `&password=${hashHex}`;
-    }
+    console.log(`Fetching content (depth ${depth}): ${contentId}`);
 
-    console.log('Fetching:', apiUrl);
+    // Build URL - NO website token needed with account token
+    let apiUrl = `https://api.gofile.io/contents/${contentId}`;
+    
+    // Add password hash if provided
+    if (password) {
+        const crypto = await import('crypto');
+        const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+        apiUrl += `?password=${passwordHash}`;
+    }
 
     const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
             'Authorization': `Bearer ${accountToken}`,
-            'Origin': 'https://gofile.io',
-            'Referer': 'https://gofile.io/',
-            'Cookie': `accountToken=${accountToken}`
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
     });
 
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
     const responseText = await response.text();
-    console.log('Response status:', response.status);
-    console.log('Response body:', responseText.substring(0, 500));
+    console.log('Response preview:', responseText.substring(0, 200));
 
     let data;
     try {
         data = JSON.parse(responseText);
     } catch (e) {
-        throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
+        throw new Error('Invalid JSON response from Gofile');
     }
 
     if (data.status !== 'ok') {
-        const errorMsg = data.data?.message || data.message || 'Unknown error';
-        
-        // Handle specific errors
-        if (errorMsg.includes('password') || data.data?.passwordRequired) {
-            throw new Error('Password required for this content. Add &password=YOUR_PASSWORD to the URL.');
-        }
-        if (errorMsg.includes('notFound')) {
-            throw new Error('Content not found. The link may be invalid or expired.');
-        }
-        if (errorMsg.includes('notPublic')) {
-            throw new Error('This content is not public.');
-        }
-        
-        throw new Error(`Gofile API error: ${errorMsg}`);
+        handleGofileError(data);
     }
 
     const content = data.data;
 
-    // Handle folder
+    if (!content) {
+        throw new Error('No content data received');
+    }
+
+    console.log(`Content: ${content.type} - ${content.name || contentId}`);
+
+    // Process based on content type
     if (content.type === 'folder') {
+        // Add folder to list
         folders.push({
             id: content.id,
-            name: content.name,
+            name: content.name || 'Unnamed Folder',
             type: 'folder',
             parentFolder: content.parentFolder,
             createTime: content.createTime,
             isPublic: content.public,
-            childrenCount: Object.keys(content.children || {}).length
+            code: content.code,
+            childrenCount: 0
         });
 
         // Process children
-        if (content.children) {
-            for (const childId of Object.keys(content.children)) {
-                const child = content.children[childId];
-                
-                if (child.type === 'file') {
-                    const fileInfo = extractFileInfo(child, content.name, content.id);
-                    if (fileInfo) {
-                        files.push(fileInfo);
-                    }
-                } else if (child.type === 'folder') {
-                    if (recursive) {
-                        // Recursively fetch subfolder
-                        await fetchGofileContent(
-                            child.id, 
-                            accountToken, 
-                            websiteToken,
-                            password,
-                            files, 
-                            folders, 
-                            true, 
-                            depth + 1
-                        );
-                    } else {
-                        folders.push({
-                            id: child.id,
-                            name: child.name,
-                            type: 'folder',
-                            parentFolder: content.id,
-                            createTime: child.createTime,
-                            childrenCount: Object.keys(child.children || {}).length
-                        });
-                    }
+        const children = content.children || content.contents || {};
+        const childrenArray = Object.values(children);
+        
+        folders[folders.length - 1].childrenCount = childrenArray.length;
+
+        console.log(`Processing ${childrenArray.length} children...`);
+
+        for (const child of childrenArray) {
+            if (!child) continue;
+
+            if (child.type === 'file') {
+                const fileInfo = extractFileInfo(child, content.name, content.id);
+                if (fileInfo) {
+                    files.push(fileInfo);
+                }
+            } else if (child.type === 'folder') {
+                if (recursive) {
+                    // Recursively fetch subfolder
+                    await fetchGofileContent({
+                        contentId: child.id,
+                        accountToken,
+                        password,
+                        files,
+                        folders,
+                        recursive: true,
+                        depth: depth + 1
+                    });
+                } else {
+                    // Just add folder reference
+                    folders.push({
+                        id: child.id,
+                        name: child.name || 'Unnamed Folder',
+                        type: 'folder',
+                        parentFolder: content.id,
+                        createTime: child.createTime,
+                        childrenCount: 0
+                    });
                 }
             }
         }
-    } 
-    // Handle single file
-    else if (content.type === 'file') {
+    } else if (content.type === 'file') {
+        // Single file
         const fileInfo = extractFileInfo(content, '', '');
         if (fileInfo) {
             files.push(fileInfo);
         }
     }
+}
+
+// Handle Gofile API errors
+function handleGofileError(data) {
+    const errorData = data.data || {};
+    const errorMessage = errorData.message || data.message || 'Unknown error';
+
+    // Check for specific error codes
+    if (errorMessage.includes('password')) {
+        throw new Error('This content is password protected. Please provide the password.');
+    }
+    if (errorMessage.includes('notFound') || errorMessage.includes('not found')) {
+        throw new Error('Content not found. The link may be invalid or expired.');
+    }
+    if (errorMessage.includes('notPublic') || errorMessage.includes('not public')) {
+        throw new Error('This content is private and cannot be accessed.');
+    }
+    if (errorMessage.includes('token')) {
+        throw new Error('Authentication failed. Please try again.');
+    }
+
+    throw new Error(`Gofile API error: ${errorMessage}`);
 }
 
 // Extract file information
@@ -265,47 +257,29 @@ function extractFileInfo(file, folderName, folderId) {
     const name = file.name;
     const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
     
-    // Media type mappings
-    const mediaTypes = {
-        // Video
-        'mp4': 'video', 'mkv': 'video', 'avi': 'video', 'webm': 'video',
-        'mov': 'video', 'wmv': 'video', 'flv': 'video', 'm4v': 'video',
-        'mpeg': 'video', 'mpg': 'video', '3gp': 'video', 'ts': 'video',
-        'mts': 'video', 'm2ts': 'video', 'vob': 'video', 'ogv': 'video',
-        
-        // Audio
-        'mp3': 'audio', 'flac': 'audio', 'wav': 'audio', 'ogg': 'audio',
-        'm4a': 'audio', 'aac': 'audio', 'wma': 'audio', 'opus': 'audio',
-        'aiff': 'audio', 'ape': 'audio',
-        
-        // HLS
-        'm3u8': 'hls', 'm3u': 'hls',
-        
-        // DASH
-        'mpd': 'dash',
-        
-        // Subtitles
-        'srt': 'subtitle', 'vtt': 'subtitle', 'ass': 'subtitle', 'sub': 'subtitle',
-        'ssa': 'subtitle', 'idx': 'subtitle',
-        
-        // Images
-        'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image',
-        'webp': 'image', 'bmp': 'image', 'svg': 'image', 'ico': 'image'
-    };
+    // Media type detection
+    const videoExts = ['mp4', 'mkv', 'avi', 'webm', 'mov', 'wmv', 'flv', 'm4v', 'mpeg', 'mpg', '3gp', 'ts', 'mts', 'm2ts', 'vob', 'ogv'];
+    const audioExts = ['mp3', 'flac', 'wav', 'ogg', 'm4a', 'aac', 'wma', 'opus', 'aiff', 'ape'];
+    const hlsExts = ['m3u8', 'm3u'];
+    const dashExts = ['mpd'];
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+    const subtitleExts = ['srt', 'vtt', 'ass', 'sub', 'ssa'];
 
-    const mediaType = mediaTypes[ext] || 'other';
+    let mediaType = 'other';
+    if (videoExts.includes(ext)) mediaType = 'video';
+    else if (audioExts.includes(ext)) mediaType = 'audio';
+    else if (hlsExts.includes(ext)) mediaType = 'hls';
+    else if (dashExts.includes(ext)) mediaType = 'dash';
+    else if (imageExts.includes(ext)) mediaType = 'image';
+    else if (subtitleExts.includes(ext)) mediaType = 'subtitle';
+
     const isPlayable = ['video', 'audio', 'hls', 'dash'].includes(mediaType);
 
-    // Get the direct link
-    let directLink = file.link || '';
-    
-    // Some files have a different link structure
-    if (!directLink && file.directLink) {
-        directLink = file.directLink;
-    }
+    // Get direct link
+    const directLink = file.link || file.directLink || '';
 
     return {
-        id: file.id || generateId(),
+        id: file.id || `file_${Math.random().toString(36).substr(2, 9)}`,
         name: name,
         size: file.size || 0,
         sizeFormatted: formatFileSize(file.size || 0),
@@ -319,17 +293,16 @@ function extractFileInfo(file, folderName, folderId) {
         extension: ext,
         mediaType: mediaType,
         isPlayable: isPlayable,
-        thumbnail: file.thumbnail || null,
+        thumbnail: file.thumbnail || file.thumbnailSmall || null,
         folderName: folderName,
         folderId: folderId,
         downloadCount: file.downloadCount || 0,
-        serverSelected: file.serverSelected || file.server || ''
+        server: file.server || ''
     };
 }
 
-// Helper functions
 function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -338,14 +311,18 @@ function formatFileSize(bytes) {
 
 function formatDate(timestamp) {
     if (!timestamp) return 'Unknown';
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    try {
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return 'Unknown';
+    }
 }
 
 function getMimeType(ext) {
@@ -355,35 +332,15 @@ function getMimeType(ext) {
         'avi': 'video/x-msvideo',
         'webm': 'video/webm',
         'mov': 'video/quicktime',
-        'wmv': 'video/x-ms-wmv',
-        'flv': 'video/x-flv',
-        'm4v': 'video/x-m4v',
         'mp3': 'audio/mpeg',
         'flac': 'audio/flac',
         'wav': 'audio/wav',
-        'ogg': 'audio/ogg',
-        'm4a': 'audio/mp4',
         'm3u8': 'application/vnd.apple.mpegurl',
-        'mpd': 'application/dash+xml'
+        'mpd': 'application/dash+xml',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif'
     };
     return mimeTypes[ext] || 'application/octet-stream';
-}
-
-function generateId() {
-    return 'file_' + Math.random().toString(36).substr(2, 9);
-}
-
-// SHA256 hash for password
-async function sha256(message) {
-    // Use Web Crypto API if available
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    
-    // Fallback: simple implementation
-    const { createHash } = await import('crypto');
-    return createHash('sha256').update(message).digest('hex');
 }

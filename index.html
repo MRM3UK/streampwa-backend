@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xtream Playlist Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #6c63ff;
+            --accent-hover: #5a52d5;
+            --accent-glow: rgba(108, 99, 255, 0.4);
+            --success: #00d4aa;
+            --danger: #ff6b6b;
+            --warning: #feca57;
+        }
+
+        body.theme-black {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 15px;
+            overflow-x: hidden;
+            transition: background 0.3s ease;
+        }
+
+        body.theme-black {
+            background: #000000;
+        }
+
+        body.menu-open {
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .header-text h1 {
+            font-size: clamp(1rem, 3vw, 1.4rem);
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2px;
+        }
+
+        .header-text p {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        /* Menu Button */
+        .menu-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .menu-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Side Menu */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 300px;
+            max-width: 85%;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--glass-border);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .side-menu.active {
+            right: 0;
+        }
+
+        .menu-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 20px;
+        }
+
+        .menu-header h2 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-header h2 svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--accent);
+        }
+
+        .menu-close {
+            width: 36px;
+            height: 36px;
+            background: var(--danger);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .menu-close:hover {
+            background: #ee5a52;
+            transform: scale(1.05);
+        }
+
+        .menu-close svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+            transform: translateX(-5px);
+        }
+
+        .menu-item svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .menu-item-text {
+            flex: 1;
+        }
+
+        .menu-item-text h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .menu-item-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .menu-item-arrow {
+            width: 18px;
+            height: 18px;
+            fill: var(--text-secondary);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: var(--glass-border);
+            margin: 20px 0;
+        }
+
+        .menu-section-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* User Info Card */
+        .user-info-card {
+            background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(0, 212, 170, 0.1));
+            border: 1px solid var(--accent);
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .user-info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .user-info-header svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--accent);
+        }
+
+        .user-info-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .user-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .user-info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .user-info-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-info-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-value.status-active { color: var(--success); }
+        .user-info-value.status-expired { color: var(--danger); }
+        .user-info-value.status-warning { color: var(--warning); }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 90px;
+            padding: 10px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        /* Copy Input */
+        .copy-input-group {
+            position: relative;
+        }
+
+        .copy-input-group input {
+            padding-right: 50px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        /* Color Picker */
+        .color-picker-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-option {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.15);
+        }
+
+        .color-option.active {
+            border-color: white;
+            box-shadow: 0 0 15px currentColor;
+            transform: scale(1.1);
+        }
+
+        .color-option.custom {
+            background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-option.custom input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Button Styles */
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-group.single {
+            grid-template-columns: 1fr;
+        }
+
+        .btn-group.triple {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--accent);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--accent-glow);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .btn-success { background: var(--success); }
+        .btn-success:hover:not(:disabled) { background: #00b894; box-shadow: 0 5px 20px rgba(0, 212, 170, 0.4); }
+
+        .btn-warning { background: var(--warning); color: #333; }
+        .btn-warning:hover:not(:disabled) { background: #feb62c; box-shadow: 0 5px 20px rgba(254, 202, 87, 0.4); }
+
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover:not(:disabled) { background: #ee5a52; box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4); }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        .btn-full { grid-column: 1 / -1; }
+        .btn-sm { padding: 8px 12px; font-size: 0.8rem; }
+
+        /* Spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Loading Dots */
+        .loading-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* History */
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .history-item-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .history-item-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .history-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .history-item-server {
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item-user {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .history-item-date {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .history-item-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover .history-item-btn {
+            opacity: 1;
+        }
+
+        .history-item-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--text-secondary);
+        }
+
+        .history-item-btn:hover {
+            background: var(--danger);
+            transform: scale(1.1);
+        }
+
+        .history-item-btn:hover svg {
+            fill: white;
+        }
+
+        .history-item-btn.copy-link:hover {
+            background: var(--accent);
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .history-empty svg {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 15px;
+            opacity: 0.4;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 180px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: var(--text-secondary);
+        }
+
+        .controls select {
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            min-width: 110px;
+        }
+
+        .controls select option {
+            background: var(--bg-secondary);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 3px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .view-toggle button {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-toggle button svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .view-toggle button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Export Info */
+        .export-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: rgba(108, 99, 255, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+
+        .export-info svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* Channel List */
+        .channel-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .channel-list.grid-view {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+
+        .channel-list.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .channel-item {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .channel-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .channel-logo-wrap {
+            width: 100%;
+            height: 90px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .channel-logo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .channel-logo-placeholder {
+            width: 36px;
+            height: 36px;
+            fill: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        .channel-info { flex: 1; min-width: 0; }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-category {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .channel-actions button {
+            flex: 1;
+            padding: 7px;
+            font-size: 0.7rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+
+        .channel-actions button:hover {
+            transform: scale(1.05);
+        }
+
+        .channel-actions button svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+
+        .action-play { background: var(--success); color: white; }
+        .action-edit { background: var(--warning); color: #333; }
+        .action-delete { background: var(--danger); color: white; }
+
+        /* List View */
+        .list-view .channel-item {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .list-view .channel-logo-wrap {
+            grid-row: 1 / 3;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 0;
+        }
+
+        .list-view .channel-info { align-self: center; }
+        .list-view .channel-actions { grid-column: 1 / -1; margin-top: 5px; }
+
+        /* Type Badge */
+        .type-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .type-badge.live { background: var(--danger); color: white; }
+        .type-badge.vod { background: var(--success); color: white; }
+        .type-badge.series { background: var(--warning); color: #333; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 25px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .modal-header h2 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-header h2 svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--accent);
+        }
+
+        .modal-close {
+            background: var(--danger);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: #ee5a52;
+            transform: rotate(90deg);
+        }
+
+        .modal-close svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* Video Player */
+        .video-player {
+            width: 100%;
+            background: black;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: auto;
+            min-height: 200px;
+            display: block;
+        }
+
+        /* Validity Check Results */
+        .validity-results {
+            margin-top: 20px;
+        }
+
+        .validity-item {
+            background: var(--bg-card);
+            border: 2px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.4s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .validity-item.valid {
+            border-color: var(--success);
+            background: rgba(0, 212, 170, 0.08);
+        }
+
+        .validity-item.invalid {
+            border-color: var(--danger);
+            background: rgba(255, 107, 107, 0.08);
+        }
+
+        .validity-item.checking {
+            border-color: var(--warning);
+            background: rgba(254, 202, 87, 0.08);
+        }
+
+        .validity-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .validity-status {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .validity-status svg {
+            width: 22px;
+            height: 22px;
+            fill: white;
+        }
+
+        .validity-item.valid .validity-status { background: var(--success); }
+        .validity-item.invalid .validity-status { background: var(--danger); }
+        .validity-item.checking .validity-status { 
+            background: var(--warning); 
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .validity-link {
+            flex: 1;
+            font-size: 0.8rem;
+            word-break: break-all;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .validity-copy-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .validity-copy-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .validity-copy-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .validity-copy-btn.copied {
+            background: var(--success);
+        }
+
+        .validity-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+        }
+
+        .validity-detail {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .validity-detail:hover {
+            background: rgba(0, 0, 0, 0.3);
+            transform: scale(1.02);
+        }
+
+        .validity-detail-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .validity-detail-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Converter */
+        .converter-result {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 212, 170, 0.08);
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            animation: fadeInUp 0.4s ease;
+        }
+
+        .converter-result-title {
+            font-size: 0.8rem;
+            color: var(--success);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .converter-output {
+            display: grid;
+            gap: 12px;
+        }
+
+        /* Settings */
+        .setting-section {
+            margin-bottom: 25px;
+        }
+
+        .setting-section-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-section-title svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .setting-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .setting-label svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent);
+        }
+
+        .setting-label-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setting-label-text span {
+            font-size: 0.95rem;
+        }
+
+        .setting-label-text small {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: 0.4s;
+            border-radius: 28px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            left: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--glass-border);
+            padding: 14px 18px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toast.show { transform: translateY(0); }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.success .toast-icon { fill: var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        .toast.error .toast-icon { fill: var(--danger); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        .toast.warning .toast-icon { fill: var(--warning); }
+
+        @media (min-width: 600px) {
+            .toast { left: auto; max-width: 400px; }
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+            fill: currentColor;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .glass-card { padding: 15px; }
+            .btn-group { grid-template-columns: 1fr; }
+            .btn-group.triple { grid-template-columns: 1fr; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .view-toggle { align-self: center; }
+            .modal-content { padding: 20px; }
+            .channel-list.grid-view { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+            .user-info-grid { grid-template-columns: repeat(2, 1fr); }
+            .validity-details { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z"/></svg>
+                </div>
+                <div class="header-text">
+                    <h1>Xtream Extractor</h1>
+                    <p>IPTV Playlist Manager</p>
+                </div>
+            </div>
+            <button class="menu-btn" id="menuBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+
+        <!-- User Info Card -->
+        <div class="user-info-card" id="userInfoCard" style="display: none;">
+            <div class="user-info-header">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <h3>Account Information</h3>
+            </div>
+            <div class="user-info-grid" id="userInfoGrid"></div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="glass-card" id="loginCard">
+            <div class="tabs">
+                <button class="tab active" data-tab="manual">
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Manual
+                </button>
+                <button class="tab" data-tab="import">
+                    <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                    Import
+                </button>
+                <button class="tab" data-tab="history">
+                    <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                    History
+                </button>
+            </div>
+
+            <!-- Manual Tab -->
+            <div class="tab-content active" id="tabManual">
+                <div class="form-group">
+                    <label>Server URL</label>
+                    <input type="text" id="serverUrl" placeholder="http://example.com:8080" />
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter username" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" />
+                </div>
+                <div class="btn-group">
+                    <button class="btn" data-type="live">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+                        Live
+                    </button>
+                    <button class="btn" data-type="vod">
+                        <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+                        Movies
+                    </button>
+                    <button class="btn" data-type="series">
+                        <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+                        Series
+                    </button>
+                    <button class="btn btn-success" data-type="all">
+                        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Fetch All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Import Tab -->
+            <div class="tab-content" id="tabImport">
+                <div class="form-group">
+                    <label>M3U / Xtream Link</label>
+                    <input type="text" id="importLink" placeholder="http://domain.com:8080/get.php?username=xxx&password=xxx&type=m3u" />
+                </div>
+                <div class="btn-group single">
+                    <button class="btn btn-success" id="importBtn">
+                        <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                        Parse & Import
+                    </button>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-content" id="tabHistory">
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">
+                        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+                        <p>No history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats" id="statsContainer" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalChannels">0</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCategories">0</div>
+                <div class="stat-label">Categories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="filteredChannels">0</div>
+                <div class="stat-label">Filtered</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="glass-card" id="controlsCard" style="display: none;">
+            <div class="controls">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="search" id="searchInput" placeholder="Search..." />
+                </div>
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="live">Live</option>
+                    <option value="vod">Movies</option>
+                    <option value="series">Series</option>
+                </select>
+                <div class="view-toggle">
+                    <button class="active" data-view="grid">
+                        <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+                    </button>
+                    <button data-view="list">
+                        <svg viewBox="0 0 24 24"><path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="export-info" id="exportInfo">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                <span id="exportInfoText">Export: <strong>0</strong> items</span>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-success" id="exportBtn">
+                    <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    Export
+                </button>
+                <button class="btn btn-warning" id="downloadBtn">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Download
+                </button>
+            </div>
+        </div>
+
+        <!-- Channel List -->
+        <div class="glass-card" id="channelListCard" style="display: none;">
+            <div class="channel-list grid-view" id="channelList"></div>
+        </div>
+    </div>
+
+    <!-- Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+    <!-- Side Menu -->
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                Menu
+            </h2>
+            <button class="menu-close" id="menuClose">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+
+        <div class="menu-section-title">Tools</div>
+
+        <div class="menu-item" id="menuValidityCheck">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            <div class="menu-item-text">
+                <h3>Validity Check</h3>
+                <p>Check single or multiple links</p>
+            </div>
+            <svg class="menu-item-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+
+        <div class="menu-item" id="menuConverter">
+            <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+            <div class="menu-item-text">
+                <h3>Converter</h3>
+                <p>Link ↔ Credentials</p>
+            </div>
+            <svg class="menu-item-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+
+        <div class="menu-divider"></div>
+        <div class="menu-section-title">Settings</div>
+
+        <div class="menu-item" id="menuSettings">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            <div class="menu-item-text">
+                <h3>Settings</h3>
+                <p>Theme, preferences</p>
+            </div>
+            <svg class="menu-item-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+
+        <div class="menu-item" id="menuClearData">
+            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            <div class="menu-item-text">
+                <h3>Clear Data</h3>
+                <p>Remove all saved data</p>
+            </div>
+            <svg class="menu-item-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit Channel
+                </h2>
+                <button class="modal-close" data-modal="editModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Channel Name</label>
+                <input type="text" id="editName" />
+            </div>
+            <div class="form-group">
+                <label>Group Title</label>
+                <input type="text" id="editGroup" />
+            </div>
+            <div class="form-group">
+                <label>Logo URL</label>
+                <input type="text" id="editLogo" />
+            </div>
+            <div class="form-group">
+                <label>Stream URL</label>
+                <div class="copy-input-group">
+                    <input type="text" id="editStreamUrl" readonly />
+                    <button class="copy-btn" id="copyEditUrl">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" id="saveEditBtn">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    Save
+                </button>
+                <button class="btn btn-danger" data-modal="editModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Modal -->
+    <div class="modal" id="playerModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <span id="playerTitleText">Player</span>
+                </h2>
+                <button class="modal-close" data-modal="playerModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+            <div class="video-player" id="videoPlayer"></div>
+            <div class="btn-group" style="margin-top: 15px;">
+                <button class="btn" id="externalPlayerBtn">
+                    <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                    External
+                </button>
+                <button class="btn btn-outline" id="copyStreamBtn">
+                    <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    Copy URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    Settings
+                </h2>
+                <button class="modal-close" data-modal="settingsModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <div class="setting-section">
+                <div class="setting-section-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+                    Theme
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <svg viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+                        <span>Black Theme</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="blackTheme" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Accent Color</label>
+                    <div class="color-picker-group" id="colorPicker">
+                        <div class="color-option active" style="background: #6c63ff;" data-color="#6c63ff"></div>
+                        <div class="color-option" style="background: #00d4aa;" data-color="#00d4aa"></div>
+                        <div class="color-option" style="background: #ff6b6b;" data-color="#ff6b6b"></div>
+                        <div class="color-option" style="background: #feca57;" data-color="#feca57"></div>
+                        <div class="color-option" style="background: #54a0ff;" data-color="#54a0ff"></div>
+                        <div class="color-option" style="background: #5f27cd;" data-color="#5f27cd"></div>
+                        <div class="color-option" style="background: #00cec9;" data-color="#00cec9"></div>
+                        <div class="color-option" style="background: #e84393;" data-color="#e84393"></div>
+                        <div class="color-option custom" title="Custom">
+                            <input type="color" id="customColor" value="#6c63ff" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-section">
+                <div class="setting-section-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    General
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                        <span>Remember Credentials</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="rememberCreds" checked />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2V9h-2V7h4v10z"/></svg>
+                        <div class="setting-label-text">
+                            <span>Save Playlist Locally</span>
+                            <small>May cause storage errors with large playlists</small>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="savePlaylist" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-danger" id="clearHistoryBtn">
+                    <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+                    Clear History
+                </button>
+                <button class="btn btn-danger" id="resetAllBtn">
+                    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    Reset All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Validity Check Modal -->
+    <div class="modal" id="validityModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    Validity Check
+                </h2>
+                <button class="modal-close" data-modal="validityModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>Enter Links (one per line)</label>
+                <textarea id="validityLinks" placeholder="http://domain.com:8080/get.php?username=xxx&password=xxx&type=m3u
+http://domain2.com:8080/get.php?username=yyy&password=yyy&type=m3u"></textarea>
+                <p class="form-hint">Supports M3U links and Xtream API format</p>
+            </div>
+
+            <div class="btn-group single">
+                <button class="btn btn-success" id="checkValidityBtn">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    Check All Links
+                </button>
+            </div>
+
+            <div class="validity-results" id="validityResults"></div>
+        </div>
+    </div>
+
+    <!-- Converter Modal -->
+    <div class="modal" id="converterModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+                    Converter
+                </h2>
+                <button class="modal-close" data-modal="converterModal">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <div class="tabs" id="converterTabs">
+                <button class="tab active" data-tab="toLink">
+                    <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                    To Link
+                </button>
+                <button class="tab" data-tab="toCreds">
+                    <svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2H8.9V6zM18 20H6V10h12v10z"/></svg>
+                    To Credentials
+                </button>
+            </div>
+
+            <!-- Credentials to Link -->
+            <div class="tab-content active" id="converterToLink">
+                <div class="form-group">
+                    <label>Server URL</label>
+                    <input type="text" id="convServer" placeholder="http://example.com:8080" />
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="convUsername" placeholder="username" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="text" id="convPassword" placeholder="password" />
+                </div>
+                <div class="btn-group single">
+                    <button class="btn btn-success" id="convertToLinkBtn">
+                        <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+                        Convert to Link
+                    </button>
+                </div>
+                <div class="converter-result" id="linkResult" style="display: none;">
+                    <div class="converter-result-title">Generated Links</div>
+                    <div class="converter-output" id="linkOutput"></div>
+                </div>
+            </div>
+
+            <!-- Link to Credentials -->
+            <div class="tab-content" id="converterToCreds">
+                <div class="form-group">
+                    <label>M3U / Xtream Link</label>
+                    <input type="text" id="convLink" placeholder="http://domain.com:8080/get.php?username=xxx&password=xxx&type=m3u" />
+                </div>
+                <div class="btn-group single">
+                    <button class="btn btn-success" id="convertToCredsBtn">
+                        <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+                        Extract Credentials
+                    </button>
+                </div>
+                <div class="converter-result" id="credsResult" style="display: none;">
+                    <div class="converter-result-title">Extracted Credentials</div>
+                    <div class="converter-output" id="credsOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <svg class="toast-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // ========================================
+        // App State
+        // ========================================
+        const state = {
+            channels: [],
+            filtered: [],
+            history: [],
+            userInfo: null,
+            currentType: 'live',
+            editIndex: null,
+            playUrl: '',
+            settings: {
+                blackTheme: false,
+                accentColor: '#6c63ff',
+                rememberCreds: true,
+                savePlaylist: false
+            }
+        };
+
+        // ========================================
+        // DOM Helpers
+        // ========================================
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        // ========================================
+        // Initialize
+        // ========================================
+        document.addEventListener('DOMContentLoaded', init);
+
+        function init() {
+            loadSettings();
+            loadCredentials();
+            loadPlaylist();
+            loadHistory();
+            bindEvents();
+            applyTheme();
+        }
+
+        // ========================================
+        // Event Binding
+        // ========================================
+        function bindEvents() {
+            // Menu
+            $('#menuBtn').addEventListener('click', toggleMenu);
+            $('#menuClose').addEventListener('click', toggleMenu);
+            $('#menuOverlay').addEventListener('click', toggleMenu);
+
+            // Menu Items
+            $('#menuValidityCheck').addEventListener('click', () => { toggleMenu(); openModal('validityModal'); });
+            $('#menuConverter').addEventListener('click', () => { toggleMenu(); openModal('converterModal'); });
+            $('#menuSettings').addEventListener('click', () => { toggleMenu(); openModal('settingsModal'); });
+            $('#menuClearData').addEventListener('click', () => { toggleMenu(); clearData(); });
+
+            // Tabs
+            $$('#loginCard .tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab, '#loginCard'));
+            });
+
+            $$('#converterTabs .tab').forEach(tab => {
+                tab.addEventListener('click', () => switchConverterTab(tab.dataset.tab));
+            });
+
+            // Fetch Buttons
+            $$('#tabManual .btn[data-type]').forEach(btn => {
+                btn.addEventListener('click', () => fetchContent(btn.dataset.type, btn));
+            });
+
+            // Import
+            $('#importBtn').addEventListener('click', importLink);
+
+            // Filters
+            $('#searchInput').addEventListener('input', filterChannels);
+            $('#categoryFilter').addEventListener('change', filterChannels);
+            $('#typeFilter').addEventListener('change', filterChannels);
+
+            // View Toggle
+            $$('.view-toggle button').forEach(btn => {
+                btn.addEventListener('click', () => setView(btn.dataset.view));
+            });
+
+            // Export
+            $('#exportBtn').addEventListener('click', exportM3U);
+            $('#downloadBtn').addEventListener('click', downloadPlaylist);
+
+            // Modal Close
+            $$('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(btn.dataset.modal));
+            });
+
+            $$('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal(modal.id);
+                });
+            });
+
+            // Settings
+            $('#blackTheme').addEventListener('change', applyTheme);
+            $('#rememberCreds').addEventListener('change', saveSettings);
+            $('#savePlaylist').addEventListener('change', saveSettings);
+            
+            $$('#colorPicker .color-option:not(.custom)').forEach(opt => {
+                opt.addEventListener('click', () => setAccentColor(opt.dataset.color, opt));
+            });
+            
+            $('#customColor').addEventListener('change', (e) => setCustomColor(e.target.value));
+            $('#clearHistoryBtn').addEventListener('click', clearHistory);
+            $('#resetAllBtn').addEventListener('click', resetAll);
+
+            // Validity Check
+            $('#checkValidityBtn').addEventListener('click', checkValidity);
+
+            // Converter
+            $('#convertToLinkBtn').addEventListener('click', convertToLink);
+            $('#convertToCredsBtn').addEventListener('click', convertToCreds);
+
+            // Edit Modal
+            $('#saveEditBtn').addEventListener('click', saveEdit);
+            $('#copyEditUrl').addEventListener('click', () => copyText($('#editStreamUrl').value, $('#copyEditUrl')));
+
+            // Player Modal
+            $('#externalPlayerBtn').addEventListener('click', openExternal);
+            $('#copyStreamBtn').addEventListener('click', () => {
+                copyText(state.playUrl);
+                showToast('URL copied', 'success');
+            });
+        }
+
+        // ========================================
+        // Menu
+        // ========================================
+        function toggleMenu() {
+            $('#sideMenu').classList.toggle('active');
+            $('#menuOverlay').classList.toggle('active');
+            $('#menuBtn').classList.toggle('active');
+            document.body.classList.toggle('menu-open');
+        }
+
+        // ========================================
+        // Tabs
+        // ========================================
+        function switchTab(tabName, container) {
+            $$(`${container} .tab`).forEach(t => t.classList.remove('active'));
+            $$(`${container} .tab-content`).forEach(c => c.classList.remove('active'));
+            $(`${container} .tab[data-tab="${tabName}"]`).classList.add('active');
+            $(`#tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+        }
+
+        function switchConverterTab(tabName) {
+            $$('#converterTabs .tab').forEach(t => t.classList.remove('active'));
+            $$('#converterModal .tab-content').forEach(c => c.classList.remove('active'));
+            $(`#converterTabs .tab[data-tab="${tabName}"]`).classList.add('active');
+            $(`#converter${tabName === 'toLink' ? 'ToLink' : 'ToCreds'}`).classList.add('active');
+        }
+
+        // ========================================
+        // Theme & Settings
+        // ========================================
+        function loadSettings() {
+            const saved = localStorage.getItem('xtream_settings');
+            if (saved) {
+                Object.assign(state.settings, JSON.parse(saved));
+                $('#blackTheme').checked = state.settings.blackTheme;
+                $('#rememberCreds').checked = state.settings.rememberCreds;
+                $('#savePlaylist').checked = state.settings.savePlaylist;
+            }
+        }
+
+        function saveSettings() {
+            state.settings.rememberCreds = $('#rememberCreds').checked;
+            state.settings.savePlaylist = $('#savePlaylist').checked;
+            
+            try {
+                localStorage.setItem('xtream_settings', JSON.stringify(state.settings));
+            } catch (e) {
+                console.error('Failed to save settings:', e);
+            }
+
+            // If save playlist is disabled, clear stored playlist
+            if (!state.settings.savePlaylist) {
+                localStorage.removeItem('xtream_playlist');
+            }
+        }
+
+        function applyTheme() {
+            state.settings.blackTheme = $('#blackTheme').checked;
+            document.body.classList.toggle('theme-black', state.settings.blackTheme);
+            
+            if (state.settings.accentColor) {
+                setAccentColor(state.settings.accentColor);
+            }
+            
+            saveSettings();
+        }
+
+        function setAccentColor(color, element = null) {
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--accent-hover', adjustColor(color, -20));
+            document.documentElement.style.setProperty('--accent-glow', color + '66');
+            
+            $$('.color-option').forEach(o => o.classList.remove('active'));
+            if (element) {
+                element.classList.add('active');
+            } else {
+                const match = $(`.color-option[data-color="${color}"]`);
+                if (match) match.classList.add('active');
+            }
+            
+            state.settings.accentColor = color;
+            saveSettings();
+        }
+
+        function setCustomColor(color) {
+            $$('.color-option').forEach(o => o.classList.remove('active'));
+            $('.color-option.custom').classList.add('active');
+            setAccentColor(color);
+        }
+
+        function adjustColor(color, amount) {
+            const hex = color.replace('#', '');
+            const num = parseInt(hex, 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+            return '#' + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+        }
+
+        // ========================================
+        // Credentials
+        // ========================================
+        function loadCredentials() {
+            if (state.settings.rememberCreds) {
+                const creds = localStorage.getItem('xtream_creds');
+                if (creds) {
+                    const { server, username, password } = JSON.parse(creds);
+                    $('#serverUrl').value = server || '';
+                    $('#username').value = username || '';
+                    $('#password').value = password || '';
+                }
+            }
+        }
+
+        function saveCredentials(server, username, password) {
+            if (state.settings.rememberCreds) {
+                try {
+                    localStorage.setItem('xtream_creds', JSON.stringify({ server, username, password }));
+                } catch (e) {
+                    console.error('Failed to save credentials:', e);
+                }
+            }
+        }
+
+        // ========================================
+        // History
+        // ========================================
+        function loadHistory() {
+            const saved = localStorage.getItem('xtream_history');
+            if (saved) {
+                state.history = JSON.parse(saved);
+                renderHistory();
+            }
+        }
+
+        function saveHistory() {
+            try {
+                localStorage.setItem('xtream_history', JSON.stringify(state.history));
+            } catch (e) {
+                console.error('Failed to save history:', e);
+                // If storage is full, remove oldest items
+                if (e.name === 'QuotaExceededError') {
+                    state.history = state.history.slice(0, 5);
+                    try {
+                        localStorage.setItem('xtream_history', JSON.stringify(state.history));
+                    } catch (e2) {
+                        console.error('Still failed after trim:', e2);
+                    }
+                }
+            }
+            renderHistory();
+        }
+
+        function addToHistory(server, username, password) {
+            const link = `${server.replace(/\/+$/, '')}/get.php?username=${username}&password=${password}&type=m3u`;
+            state.history = state.history.filter(h => h.link !== link);
+            state.history.unshift({ server, username, password, link, timestamp: Date.now() });
+            state.history = state.history.slice(0, 10);
+            saveHistory();
+        }
+
+        function renderHistory() {
+            const container = $('#historyList');
+            
+            if (!state.history.length) {
+                container.innerHTML = `<div class="history-empty"><svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg><p>No history</p></div>`;
+                return;
+            }
+
+            container.innerHTML = state.history.map((item, i) => {
+                let host = item.server;
+                try { host = new URL(item.server).host; } catch {}
+                return `
+                    <div class="history-item" data-index="${i}">
+                        <div class="history-item-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+                        <div class="history-item-info">
+                            <div class="history-item-server">${host}</div>
+                            <div class="history-item-user">${item.username}</div>
+                            <div class="history-item-date">${new Date(item.timestamp).toLocaleDateString()}</div>
+                        </div>
+                        <div class="history-item-actions">
+                            <button class="history-item-btn copy-link" data-link="${item.link}"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                            <button class="history-item-btn delete" data-index="${i}"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            // Bind history events
+            container.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (!e.target.closest('.history-item-btn')) {
+                        loadFromHistory(parseInt(item.dataset.index));
+                    }
+                });
+            });
+
+            container.querySelectorAll('.history-item-btn.copy-link').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    copyText(btn.dataset.link);
+                    showToast('Link copied', 'success');
+                });
+            });
+
+            container.querySelectorAll('.history-item-btn.delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.history.splice(parseInt(btn.dataset.index), 1);
+                    saveHistory();
+                    showToast('Deleted', 'success');
+                });
+            });
+        }
+
+        function loadFromHistory(index) {
+            const item = state.history[index];
+            $('#serverUrl').value = item.server;
+            $('#username').value = item.username;
+            $('#password').value = item.password;
+            switchTab('manual', '#loginCard');
+            showToast('Loaded', 'success');
+        }
+
+        function clearHistory() {
+            if (confirm('Clear all history?')) {
+                state.history = [];
+                saveHistory();
+                showToast('History cleared', 'success');
+            }
+        }
+
+        // ========================================
+        // Import
+        // ========================================
+        function importLink() {
+            const link = $('#importLink').value.trim();
+            const parsed = parseLink(link);
+            
+            if (!parsed) {
+                showToast('Invalid link format', 'error');
+                return;
+            }
+
+            $('#serverUrl').value = parsed.server;
+            $('#username').value = parsed.username;
+            $('#password').value = parsed.password;
+            switchTab('manual', '#loginCard');
+            showToast('Imported successfully', 'success');
+        }
+
+        function parseLink(link) {
+            try {
+                const url = new URL(link);
+                const username = url.searchParams.get('username');
+                const password = url.searchParams.get('password');
+                
+                if (username && password) {
+                    return {
+                        server: `${url.protocol}//${url.host}`,
+                        username,
+                        password
+                    };
+                }
+            } catch {}
+            return null;
+        }
+
+        // ========================================
+        // Fetch Content
+        // ========================================
+        async function fetchContent(type, btn) {
+            const server = $('#serverUrl').value.trim();
+            const username = $('#username').value.trim();
+            const password = $('#password').value.trim();
+
+            if (!server || !username || !password) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner"></span> Loading...`;
+
+            try {
+                if (type === 'all') {
+                    await fetchAll(server, username, password);
+                } else {
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ server, username, password, type })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Failed to fetch');
+
+                    state.channels = (data.streams || []).map(s => ({ ...s, streamType: type }));
+                    state.currentType = type;
+                    state.userInfo = data.userInfo;
+                }
+
+                saveCredentials(server, username, password);
+                addToHistory(server, username, password);
+                savePlaylist();
+                displayChannels();
+                displayUserInfo();
+                showToast(`Loaded ${state.channels.length} items`, 'success');
+
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function fetchAll(server, username, password) {
+            const types = ['live', 'vod', 'series'];
+            const allStreams = [];
+            let info = null;
+
+            for (const type of types) {
+                try {
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ server, username, password, type })
+                    });
+
+                    const data = await response.json();
+                    if (response.ok && data.streams) {
+                        allStreams.push(...data.streams.map(s => ({ ...s, streamType: type })));
+                        if (data.userInfo) info = data.userInfo;
+                    }
+                } catch {}
+            }
+
+            state.channels = allStreams;
+            state.currentType = 'all';
+            state.userInfo = info;
+        }
+
+        // ========================================
+        // Playlist Storage
+        // ========================================
+        function loadPlaylist() {
+            if (!state.settings.savePlaylist) return;
+            
+            try {
+                const saved = localStorage.getItem('xtream_playlist');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    state.channels = data.channels || [];
+                    state.currentType = data.type || 'live';
+                    state.userInfo = data.userInfo || null;
+                    
+                    if (state.channels.length) {
+                        displayChannels();
+                        displayUserInfo();
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load playlist:', e);
+            }
+        }
+
+        function savePlaylist() {
+            // Only save if setting is enabled
+            if (!state.settings.savePlaylist) return;
+
+            try {
+                // Only save minimal data to avoid quota issues
+                const minimalData = {
+                    type: state.currentType,
+                    userInfo: state.userInfo,
+                    channels: state.channels.map(ch => ({
+                        stream_id: ch.stream_id,
+                        name: ch.name,
+                        category_name: ch.category_name,
+                        stream_icon: ch.stream_icon,
+                        streamType: ch.streamType
+                    }))
+                };
+
+                localStorage.setItem('xtream_playlist', JSON.stringify(minimalData));
+            } catch (e) {
+                console.error('Failed to save playlist:', e);
+                if (e.name === 'QuotaExceededError') {
+                    showToast('Storage full. Disable "Save Playlist Locally" in settings.', 'warning');
+                    // Disable the setting
+                    state.settings.savePlaylist = false;
+                    $('#savePlaylist').checked = false;
+                    saveSettings();
+                    localStorage.removeItem('xtream_playlist');
+                }
+            }
+        }
+
+        // ========================================
+        // Display
+        // ========================================
+        function displayUserInfo() {
+            const card = $('#userInfoCard');
+            const grid = $('#userInfoGrid');
+            
+            if (!state.userInfo) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = 'block';
+
+            let expiryText = 'N/A', expiryClass = '';
+            if (state.userInfo.exp_date) {
+                const exp = new Date(state.userInfo.exp_date * 1000);
+                const days = Math.ceil((exp - new Date()) / 86400000);
+                expiryText = exp.toLocaleDateString();
+                
+                if (days < 0) {
+                    expiryClass = 'status-expired';
+                    expiryText += ' (Expired)';
+                } else if (days <= 7) {
+                    expiryClass = 'status-warning';
+                    expiryText += ` (${days}d)`;
+                } else {
+                    expiryClass = 'status-active';
+                    expiryText += ` (${days}d)`;
+                }
+            }
+
+            grid.innerHTML = `
+                <div class="user-info-item"><div class="user-info-label">Username</div><div class="user-info-value">${state.userInfo.username || 'N/A'}</div></div>
+                <div class="user-info-item"><div class="user-info-label">Status</div><div class="user-info-value ${state.userInfo.status === 'Active' ? 'status-active' : 'status-expired'}">${state.userInfo.status || 'N/A'}</div></div>
+                <div class="user-info-item"><div class="user-info-label">Expiry</div><div class="user-info-value ${expiryClass}">${expiryText}</div></div>
+                <div class="user-info-item"><div class="user-info-label">Connections</div><div class="user-info-value">${state.userInfo.active_cons || 0}/${state.userInfo.max_connections || 1}</div></div>
+            `;
+        }
+
+        function displayChannels() {
+            state.filtered = [...state.channels];
+            renderChannels();
+            updateStats();
+            populateCategories();
+            updateExportInfo();
+
+            $('#statsContainer').style.display = 'grid';
+            $('#controlsCard').style.display = 'block';
+            $('#channelListCard').style.display = 'block';
+        }
+
+        function renderChannels() {
+            const container = $('#channelList');
+
+            if (!state.filtered.length) {
+                container.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><h3>No results</h3><p>Try different filters</p></div>`;
+                return;
+            }
+
+            container.innerHTML = state.filtered.map((ch, i) => `
+                <div class="channel-item" data-index="${i}">
+                    <span class="type-badge ${ch.streamType}">${ch.streamType}</span>
+                    <div class="channel-logo-wrap">
+                        ${ch.stream_icon ? `<img class="channel-logo" src="${ch.stream_icon}" onerror="this.outerHTML='<svg class=\\'channel-logo-placeholder\\' viewBox=\\'0 0 24 24\\'><path d=\\'M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z\\'/></svg>'" />` : `<svg class="channel-logo-placeholder" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9 8l7 4-7 4V8z"/></svg>`}
+                    </div>
+                    <div class="channel-info">
+                        <div class="channel-name">${ch.name}</div>
+                        <div class="channel-category">${ch.category_name || 'Uncategorized'}</div>
+                    </div>
+                    <div class="channel-actions">
+                        <button class="action-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Play</button>
+                        <button class="action-edit"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></button>
+                        <button class="action-delete"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Bind channel events
+            container.querySelectorAll('.channel-item').forEach(item => {
+                const index = parseInt(item.dataset.index);
+                item.querySelector('.action-play').addEventListener('click', () => playChannel(index));
+                item.querySelector('.action-edit').addEventListener('click', () => editChannel(index));
+                item.querySelector('.action-delete').addEventListener('click', () => deleteChannel(index));
+            });
+        }
+
+        function updateStats() {
+            $('#totalChannels').textContent = state.channels.length;
+            $('#filteredChannels').textContent = state.filtered.length;
+            $('#totalCategories').textContent = new Set(state.channels.map(c => c.category_name).filter(Boolean)).size;
+        }
+
+        function updateExportInfo() {
+            const search = $('#searchInput').value;
+            const cat = $('#categoryFilter').value;
+            const type = $('#typeFilter').value;
+
+            let text = `Export: <strong>${state.filtered.length}</strong> items`;
+            if (cat || type || search) {
+                const filters = [];
+                if (cat) filters.push(cat);
+                if (type) filters.push(type);
+                if (search) filters.push(`"${search}"`);
+                text += ` (${filters.join(', ')})`;
+            }
+            $('#exportInfoText').innerHTML = text;
+        }
+
+        function populateCategories() {
+            const select = $('#categoryFilter');
+            const cats = [...new Set(state.channels.map(c => c.category_name).filter(Boolean))].sort();
+            select.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function filterChannels() {
+            const search = $('#searchInput').value.toLowerCase();
+            const cat = $('#categoryFilter').value;
+            const type = $('#typeFilter').value;
+
+            state.filtered = state.channels.filter(c =>
+                c.name.toLowerCase().includes(search) &&
+                (!cat || c.category_name === cat) &&
+                (!type || c.streamType === type)
+            );
+
+            renderChannels();
+            $('#filteredChannels').textContent = state.filtered.length;
+            updateExportInfo();
+        }
+
+        function setView(mode) {
+            $('#channelList').className = `channel-list ${mode}-view`;
+            $$('.view-toggle button').forEach(b => b.classList.remove('active'));
+            $(`.view-toggle button[data-view="${mode}"]`).classList.add('active');
+        }
+
+        // ========================================
+        // Stream URL
+        // ========================================
+        function getStreamUrl(ch) {
+            const server = $('#serverUrl').value.trim();
+            const user = $('#username').value.trim();
+            const pass = $('#password').value.trim();
+            const type = ch.streamType || state.currentType;
+            const ext = type === 'live' ? '.ts' : '.mp4';
+
+            if (type === 'live') return `${server}/live/${user}/${pass}/${ch.stream_id}${ext}`;
+            if (type === 'vod') return `${server}/movie/${user}/${pass}/${ch.stream_id}${ext}`;
+            return `${server}/series/${user}/${pass}/${ch.stream_id}${ext}`;
+        }
+
+        // ========================================
+        // Player
+        // ========================================
+        function playChannel(index) {
+            const ch = state.filtered[index];
+            state.playUrl = getStreamUrl(ch);
+            $('#playerTitleText').textContent = ch.name;
+
+            const container = $('#videoPlayer');
+            container.innerHTML = `<video id="videoEl" controls autoplay playsinline></video>`;
+            
+            const video = $('#videoEl');
+            if (state.playUrl.includes('.m3u8') && Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(state.playUrl);
+                hls.attachMedia(video);
+            } else {
+                video.src = state.playUrl;
+            }
+
+            openModal('playerModal');
+        }
+
+        function openExternal() {
+            if (state.playUrl) {
+                window.location.href = `intent:${state.playUrl}#Intent;type=video/*;end`;
+            }
+        }
+
+        // ========================================
+        // Edit
+        // ========================================
+        function editChannel(index) {
+            state.editIndex = index;
+            const ch = state.filtered[index];
+            
+            $('#editName').value = ch.name;
+            $('#editGroup').value = ch.category_name || '';
+            $('#editLogo').value = ch.stream_icon || '';
+            $('#editStreamUrl').value = getStreamUrl(ch);
+            
+            openModal('editModal');
+        }
+
+        function saveEdit() {
+            if (state.editIndex === null) return;
+            
+            const ch = state.filtered[state.editIndex];
+            ch.name = $('#editName').value;
+            ch.category_name = $('#editGroup').value;
+            ch.stream_icon = $('#editLogo').value;
+
+            const mainIndex = state.channels.findIndex(c => c.stream_id === ch.stream_id && c.streamType === ch.streamType);
+            if (mainIndex !== -1) state.channels[mainIndex] = ch;
+
+            savePlaylist();
+            renderChannels();
+            populateCategories();
+            closeModal('editModal');
+            showToast('Saved', 'success');
+        }
+
+        function deleteChannel(index) {
+            if (!confirm('Delete this channel?')) return;
+            
+            const ch = state.filtered[index];
+            state.channels = state.channels.filter(c => !(c.stream_id === ch.stream_id && c.streamType === ch.streamType));
+            
+            savePlaylist();
+            filterChannels();
+            updateStats();
+            showToast('Deleted', 'success');
+        }
+
+        // ========================================
+        // Export
+        // ========================================
+        function exportM3U() {
+            if (!state.filtered.length) {
+                showToast('Nothing to export', 'warning');
+                return;
+            }
+            copyText(generateM3U());
+            showToast(`Copied ${state.filtered.length} items`, 'success');
+        }
+
+        function downloadPlaylist() {
+            if (!state.filtered.length) {
+                showToast('Nothing to download', 'warning');
+                return;
+            }
+
+            const cat = $('#categoryFilter').value;
+            const type = $('#typeFilter').value;
+            let name = 'playlist';
+            if (cat) name += `_${cat.replace(/[^a-z0-9]/gi, '_')}`;
+            if (type) name += `_${type}`;
+
+            const blob = new Blob([generateM3U()], { type: 'audio/x-mpegurl' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${name}_${Date.now()}.m3u`;
+            a.click();
+            showToast(`Downloaded ${state.filtered.length} items`, 'success');
+        }
+
+        function generateM3U() {
+            return '#EXTM3U\n' + state.filtered.map(ch =>
+                `#EXTINF:-1 tvg-logo="${ch.stream_icon || ''}" group-title="${ch.category_name || 'Uncategorized'}",${ch.name}\n${getStreamUrl(ch)}`
+            ).join('\n');
+        }
+
+        // ========================================
+        // Validity Check
+        // ========================================
+        async function checkValidity() {
+            const linksText = $('#validityLinks').value.trim();
+            if (!linksText) {
+                showToast('Please enter at least one link', 'error');
+                return;
+            }
+
+            const links = linksText.split('\n').filter(l => l.trim());
+            const container = $('#validityResults');
+            const btn = $('#checkValidityBtn');
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner"></span> Checking...`;
+            
+            // Show initial loading state for all links
+            container.innerHTML = links.map((link, i) => `
+                <div class="validity-item checking" id="validity-${i}">
+                    <div class="validity-header">
+                        <div class="validity-status">
+                            <div class="loading-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="validity-link">${truncate(link, 50)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Check each link
+            for (let i = 0; i < links.length; i++) {
+                const link = links[i].trim();
+                const itemEl = $(`#validity-${i}`);
+                
+                // Add delay for visual effect
+                await sleep(300);
+
+                try {
+                    const parsed = parseLink(link);
+                    if (!parsed) throw new Error('Invalid link format');
+
+                    const response = await fetch('/api/extract', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            server: parsed.server,
+                            username: parsed.username,
+                            password: parsed.password,
+                            type: 'live'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.userInfo) {
+                        const info = data.userInfo;
+                        let expiryText = 'N/A', expiryClass = '';
+
+                        if (info.exp_date) {
+                            const expDate = new Date(info.exp_date * 1000);
+                            const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
+                            expiryText = expDate.toLocaleDateString();
+
+                            if (daysLeft < 0) {
+                                expiryClass = 'status-expired';
+                                expiryText += ' (Expired)';
+                            } else if (daysLeft <= 7) {
+                                expiryClass = 'status-warning';
+                                expiryText += ` (${daysLeft}d)`;
+                            } else {
+                                expiryClass = 'status-active';
+                                expiryText += ` (${daysLeft}d)`;
+                            }
+                        }
+
+                        itemEl.className = 'validity-item valid';
+                        itemEl.innerHTML = `
+                            <div class="validity-header">
+                                <div class="validity-status">
+                                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                </div>
+                                <div class="validity-link">${truncate(link, 45)}</div>
+                                <button class="validity-copy-btn" data-link="${encodeURIComponent(link)}" title="Copy Link">
+                                    <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                </button>
+                            </div>
+                            <div class="validity-details">
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Username</div>
+                                    <div class="validity-detail-value">${info.username || parsed.username}</div>
+                                </div>
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Status</div>
+                                    <div class="validity-detail-value ${info.status === 'Active' ? 'status-active' : 'status-expired'}">${info.status || 'Unknown'}</div>
+                                </div>
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Expiry</div>
+                                    <div class="validity-detail-value ${expiryClass}">${expiryText}</div>
+                                </div>
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Connections</div>
+                                    <div class="validity-detail-value">${info.active_cons || 0}/${info.max_connections || 1}</div>
+                                </div>
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Channels</div>
+                                    <div class="validity-detail-value">${data.count || 0}</div>
+                                </div>
+                                <div class="validity-detail">
+                                    <div class="validity-detail-label">Trial</div>
+                                    <div class="validity-detail-value">${info.is_trial === '1' ? 'Yes' : 'No'}</div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Bind copy button
+                        itemEl.querySelector('.validity-copy-btn').addEventListener('click', function() {
+                            const linkToCopy = decodeURIComponent(this.dataset.link);
+                            copyText(linkToCopy, this);
+                            showToast('Link copied', 'success');
+                        });
+
+                    } else {
+                        throw new Error(data.error || 'Invalid credentials');
+                    }
+                } catch (error) {
+                    itemEl.className = 'validity-item invalid';
+                    itemEl.innerHTML = `
+                        <div class="validity-header">
+                            <div class="validity-status">
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            </div>
+                            <div class="validity-link">${truncate(link, 50)}</div>
+                        </div>
+                        <div class="validity-details">
+                            <div class="validity-detail" style="grid-column: 1/-1;">
+                                <div class="validity-detail-label">Error</div>
+                                <div class="validity-detail-value status-expired">${error.message}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Check All Links`;
+            showToast('Check completed', 'success');
+        }
+
+        // ========================================
+        // Converter
+        // ========================================
+        function convertToLink() {
+            const server = $('#convServer').value.trim();
+            const username = $('#convUsername').value.trim();
+            const password = $('#convPassword').value.trim();
+
+            if (!server || !username || !password) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+
+            const cleanServer = server.replace(/\/+$/, '');
+            const links = {
+                m3u: `${cleanServer}/get.php?username=${username}&password=${password}&type=m3u`,
+                m3uPlus: `${cleanServer}/get.php?username=${username}&password=${password}&type=m3u_plus`,
+                api: `${cleanServer}/player_api.php?username=${username}&password=${password}`
+            };
+
+            $('#linkOutput').innerHTML = `
+                <div class="form-group">
+                    <label>M3U Link</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${links.m3u}" readonly />
+                        <button class="copy-btn" onclick="copyText('${links.m3u}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>M3U Plus Link</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${links.m3uPlus}" readonly />
+                        <button class="copy-btn" onclick="copyText('${links.m3uPlus}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>API Link</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${links.api}" readonly />
+                        <button class="copy-btn" onclick="copyText('${links.api}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+            `;
+
+            $('#linkResult').style.display = 'block';
+            showToast('Links generated', 'success');
+        }
+
+        function convertToCreds() {
+            const link = $('#convLink').value.trim();
+            const parsed = parseLink(link);
+
+            if (!parsed) {
+                showToast('Invalid link format', 'error');
+                return;
+            }
+
+            $('#credsOutput').innerHTML = `
+                <div class="form-group">
+                    <label>Server URL</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${parsed.server}" readonly />
+                        <button class="copy-btn" onclick="copyText('${parsed.server}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${parsed.username}" readonly />
+                        <button class="copy-btn" onclick="copyText('${parsed.username}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="copy-input-group">
+                        <input type="text" value="${parsed.password}" readonly />
+                        <button class="copy-btn" onclick="copyText('${parsed.password}', this)"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                    </div>
+                </div>
+            `;
+
+            $('#credsResult').style.display = 'block';
+            showToast('Credentials extracted', 'success');
+        }
+
+
+        // ========================================
+        // Clear Data
+        // ========================================
+        function clearData() {
+            if (!confirm('Clear all playlist data?')) return;
+
+            localStorage.removeItem('xtream_playlist');
+            localStorage.removeItem('xtream_creds');
+            state.channels = [];
+            state.filtered = [];
+            state.userInfo = null;
+
+            $('#statsContainer').style.display = 'none';
+            $('#controlsCard').style.display = 'none';
+            $('#channelListCard').style.display = 'none';
+            $('#userInfoCard').style.display = 'none';
+            $('#serverUrl').value = '';
+            $('#username').value = '';
+            $('#password').value = '';
+
+            showToast('Data cleared', 'success');
+        }
+
+        function resetAll() {
+            if (confirm('Reset everything? This cannot be undone.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // ========================================
+        // Modal
+        // ========================================
+        function openModal(id) {
+            $(`#${id}`).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            $(`#${id}`).classList.remove('active');
+            document.body.style.overflow = '';
+            if (id === 'playerModal') $('#videoPlayer').innerHTML = '';
+        }
+
+        // ========================================
+        // Utilities
+        // ========================================
+        function copyText(text, btn = null) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (btn) {
+                    btn.classList.add('copied');
+                    const originalSVG = btn.innerHTML;
+                    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = originalSVG;
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showToast('Failed to copy', 'error');
+            });
+        }
+
+        function truncate(str, len) {
+            if (!str) return '';
+            return str.length > len ? str.substring(0, len) + '...' : str;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = $('#toast');
+            $('#toastMessage').textContent = message;
+            toast.className = `toast ${type} show`;
+
+            const icons = {
+                success: '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',
+                error: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>',
+                warning: '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>'
+            };
+            
+            toast.querySelector('.toast-icon').innerHTML = icons[type] || icons.success;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
